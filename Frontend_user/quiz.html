@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Live Quiz with Leaderboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    #quizSection { display: none; max-width: 700px; margin: auto; }
+    #errorSection { display: none; color: rgb(255, 0, 0); max-width: 700px; margin: auto; }
+    #progressBar {
+      height: 30px;
+      background-color: #ff00bbc1;
+      color: white;
+      text-align: center;
+      line-height: 30px;
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+    #progressContainer {
+      background-color: #e9ecef;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    #timer {
+      font-weight: bold;
+      font-size: 1.2rem;
+      margin-bottom: 15px;
+      color: blue;
+    }
+  </style>
+  <style>
+    #leaderboardSection {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      max-width: 700px;
+      margin: 40px auto;
+    }
+    #leaderboardSection h4 {
+      font-weight: 700;
+      color: #343a40;
+      margin-bottom: 20px;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+    #leaderboardBody tr:nth-child(odd) {
+      background-color: #e9ecef;
+    }
+    #leaderboardBody tr:hover {
+      background-color: #ced4da;
+    }
+    #leaderboardBody td {
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: #495057;
+      text-align: center;
+    }
+    #leaderboardBody td:first-child {
+      font-weight: 700;
+      color: #212529;
+    }
+  </style>
+</head>
+<body class="p-4">
+
+  <div class="container" id="quizSection" style="max-width: 700px; display:none;">
+    <h3 id="quizTitle" class="mb-3">Live Quiz</h3>
+
+    <div class="progress mb-3">
+      <div id="progressBar" class="progress-bar progress-bar-striped" role="progressbar" style="width: 0%">Q0/0</div>
+    </div>
+
+    <p id="timer" style="font-weight: bold; color: blue;"></p>
+
+    <div id="quiz"></div>
+
+    <p id="feedback"></p>
+
+    <button id="nextBtn" class="btn btn-primary mt-2" style="display: none;">Next</button>
+  </div>
+
+  <div id="errorSection" class="alert alert-danger" role="alert" style="display: none; max-width: 700px; margin: auto;">
+    Invalid or missing passcode. Please <a href="index.html">go back</a> and enter a valid passcode.
+  </div>
+
+  <!-- Leaderboard Section -->
+  <div class="container" id="leaderboardSection" style="display:none;">
+    <h4>Leaderboard</h4>
+    <table class="table table-hover rounded">
+      <thead class="table-dark">
+        <tr><th>Rank</th><th>Name</th><th>Score</th></tr>
+      </thead>
+      <tbody id="leaderboardBody"></tbody>
+    </table>
+  </div>
+
+<script>
+  const quizzes = {
+    "ABC123": [
+      { question: "What is 2 + 2?", options: ["3", "4", "5", "6"], correctIndex: 1 },
+      { question: "What is the capital of Italy?", options: ["Rome", "Paris", "Berlin", "Madrid"], correctIndex: 0 }
+    ],
+    "XYZ789": [
+      { question: "Sun rises in the?", options: ["East", "West", "North", "South"], correctIndex: 0 }
+    ]
+  };
+
+  let currentQuestion = 0;
+  let userAnswers = [];
+  let questionTimer;
+  let questionTime = 60;
+  let quizData = [];
+  let score = 0;
+  let userName = '';
+
+  window.onload = () => {
+    const passcode = localStorage.getItem("quizPasscode");
+    if (passcode && quizzes[passcode]) {
+      quizData = quizzes[passcode];
+      askUserName();
+    } else {
+      document.getElementById("errorSection").style.display = "block";
+    }
+  };
+
+  function askUserName() {
+    userName = prompt("Enter your name for the leaderboard:", "Anonymous");
+    if (!userName || userName.trim() === "") userName = "Anonymous";
+    document.getElementById("quizSection").style.display = "block";
+    displayQuestion();
+  }
+
+  function updateTimerDisplay() {
+    const timer = document.getElementById("timer");
+    timer.innerText = `Time Left: ${questionTime}s`;
+    timer.style.color = questionTime <= 10 ? "red" : "blue";
+  }
+
+  function displayQuestion() {
+    clearInterval(questionTimer);
+    document.getElementById("feedback").innerText = "";
+    document.getElementById("nextBtn").style.display = "none";
+
+    const progressPercent = (currentQuestion / quizData.length) * 100;
+    const progressBar = document.getElementById("progressBar");
+    progressBar.style.width = `${progressPercent}%`;
+    progressBar.innerText = `Q${currentQuestion + 1}/${quizData.length}`;
+
+    const q = quizData[currentQuestion];
+    document.getElementById("quiz").innerHTML = `
+      <h5>Question ${currentQuestion + 1} of ${quizData.length}: ${q.question}</h5>
+      ${q.options.map((opt, idx) => `
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="option" value="${idx}" id="opt${idx}">
+          <label class="form-check-label" for="opt${idx}">${opt}</label>
+        </div>
+      `).join("")}
+      <button class="btn btn-success mt-3" onclick="checkAnswer()">Submit Answer</button>
+    `;
+
+    questionTime = 60;
+    updateTimerDisplay();
+    questionTimer = setInterval(() => {
+      questionTime--;
+      updateTimerDisplay();
+      if (questionTime === 0) {
+        clearInterval(questionTimer);
+        autoSubmitAndNext();
+      }
+    }, 1000);
+  }
+
+  function checkAnswer(auto = false) {
+    clearInterval(questionTimer);
+    const q = quizData[currentQuestion];
+    const selectedOption = document.querySelector('input[name="option"]:checked');
+    const feedback = document.getElementById("feedback");
+    const allOptions = document.querySelectorAll('input[name="option"]');
+
+    let selected = null;
+    if (selectedOption) selected = parseInt(selectedOption.value);
+    userAnswers[currentQuestion] = selected;
+
+    allOptions.forEach((input, idx) => {
+      input.disabled = true;
+      const label = input.nextElementSibling;
+      label.classList.remove("text-success", "text-danger", "fw-bold");
+      if (idx === q.correctIndex) label.classList.add("text-success", "fw-bold");
+      if (selected !== null && idx === selected && idx !== q.correctIndex)
+        label.classList.add("text-danger");
+    });
+
+    if (selected === q.correctIndex) {
+      feedback.innerText = "✔️ Correct!";
+      feedback.style.color = "green";
+      score++;
+    } else if (selected === null) {
+      feedback.innerText = "⛔ No option selected.";
+      feedback.style.color = "orange";
+    } else {
+      feedback.innerText = `❌ Incorrect. Correct: ${q.options[q.correctIndex]}`;
+      feedback.style.color = "red";
+    }
+
+    const nextBtn = document.getElementById("nextBtn");
+    nextBtn.style.display = "inline-block";
+    nextBtn.onclick = () => {
+      currentQuestion++;
+      if (currentQuestion < quizData.length) {
+        displayQuestion();
+      } else {
+        submitQuiz();
+      }
+    };
+
+    if (auto) {
+      setTimeout(() => {
+        nextBtn.click();
+      }, 2000);
+    }
+  }
+ 
+
+
+  function autoSubmitAndNext() {
+    checkAnswer(true);
+  }
+
+  function submitQuiz() {
+    clearInterval(questionTimer);
+    const progressBar = document.getElementById("progressBar");
+    progressBar.style.width = `100%`;
+    progressBar.innerText = `Completed`;
+
+    document.getElementById("quizSection").style.display = "none";
+
+    saveScore(userName, score);
+    showLeaderboard();
+  }
+
+  function saveScore(name, score) {
+    let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+    leaderboard.push({ name, score });
+    leaderboard.sort((a,b) => b.score - a.score);
+    if (leaderboard.length > 10) leaderboard = leaderboard.slice(0,10);
+    localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+  }
+
+  function showLeaderboard() {
+    const leaderboardSection = document.getElementById("leaderboardSection");
+    const leaderboardBody = document.getElementById("leaderboardBody");
+    leaderboardBody.innerHTML = "";
+
+    let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+
+    leaderboard.forEach((entry, idx) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${idx+1}</td><td>${entry.name}</td><td>${entry.score}</td>`;
+      leaderboardBody.appendChild(tr);
+    });
+
+    leaderboardSection.style.display = "block";
+  }
+</script>
+
+</body>
+</html>
