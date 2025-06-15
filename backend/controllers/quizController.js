@@ -111,3 +111,87 @@ exports.getQuestionsByQuiz = async (req, res) => {
     res.status(500).json({ message: 'Error fetching questions' });
   }
 };
+
+exports.startQuiz = async (req, res) => {
+  const { quizId } = req.params;
+  const creator_id = req.user.id;
+
+  try {
+    // Verify quiz ownership
+    const quizResult = await pool.query(
+      'SELECT * FROM quizzes WHERE id = $1 AND creator_id = $2',
+      [quizId, creator_id]
+    );
+
+    if (quizResult.rows.length === 0) {
+      return res.status(403).json({ message: 'Not authorized to start this quiz' });
+    }
+
+    // Get quiz questions with options
+    const questionsResult = await pool.query(
+      `SELECT q.*, json_agg(
+        json_build_object(
+          'id', o.id,
+          'option_text', o.option_text,
+          'is_correct', o.is_correct
+        )
+      ) as options
+      FROM questions q
+      LEFT JOIN options o ON o.question_id = q.id
+      WHERE q.quiz_id = $1
+      GROUP BY q.id
+      ORDER BY q.id`,
+      [quizId]
+    );
+
+    res.json({
+      quiz: quizResult.rows[0],
+      questions: questionsResult.rows
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error starting quiz' });
+  }
+};
+
+exports.getQuizState = async (req, res) => {
+  const { quizId } = req.params;
+  const creator_id = req.user.id;
+
+  try {
+    // Verify quiz ownership
+    const quizResult = await pool.query(
+      'SELECT * FROM quizzes WHERE id = $1 AND creator_id = $2',
+      [quizId, creator_id]
+    );
+
+    if (quizResult.rows.length === 0) {
+      return res.status(403).json({ message: 'Not authorized to access this quiz' });
+    }
+
+    // Get quiz questions with options
+    const questionsResult = await pool.query(
+      `SELECT q.*, json_agg(
+        json_build_object(
+          'id', o.id,
+          'option_text', o.option_text,
+          'is_correct', o.is_correct
+        )
+      ) as options
+      FROM questions q
+      LEFT JOIN options o ON o.question_id = q.id
+      WHERE q.quiz_id = $1
+      GROUP BY q.id
+      ORDER BY q.id`,
+      [quizId]
+    );
+
+    res.json({
+      quiz: quizResult.rows[0],
+      questions: questionsResult.rows
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error getting quiz state' });
+  }
+};
