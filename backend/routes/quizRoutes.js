@@ -6,7 +6,10 @@ const verifyToken = require('../middleware/verifyToken');
 
 router.post('/create', verifyToken, quizController.createQuiz);
 router.post('/:quizId/questions', verifyToken, quizController.addQuestion);
-router.put('/questions/:questionId', verifyToken, quizController.updateQuestion);
-router.delete('/questions/:questionId', verifyToken, quizController.deleteQuestion);
+router.put('/:quizId/questions/:questionId', verifyToken, quizController.updateQuestion);
+router.delete('/:quizId/questions/:questionId', verifyToken, quizController.deleteQuestion);
 router.get('/:quizId/questions', verifyToken, quizController.getQuestionsByQuiz);
+router.post('/:quizId/start', verifyToken, quizController.startQuiz);
+router.get('/:quizId/state', verifyToken, quizController.getQuizState);
+
 module.exports = router;
