@@ -1,69 +1,152 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Enter Quiz Passcode</title>
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-  />
-  <style>
-    body {
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    .passcode-container {
-      background: rgba(255, 255, 255, 0.1);
-      padding: 2rem 3rem;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-      width: 100%;
-      max-width: 400px;
-      text-align: center;
-    }
-    .btn-primary {
-      width: 100%;
-      font-weight: 600;
-      font-size: 1.1rem;
-    }
-    input::placeholder {
-      color: #ddd;
-    }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generated Page</title>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;700&display=swap" rel="stylesheet">
+<title>My Quiz</title>
+  <link rel="stylesheet" href="global.css">
+  <style id="sections-styles">
+/* CSS for section section:header */
+.quiz-header-section {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  /* Margin bottom: space to Q. prompt. y_q_prompt(298) - (y_title(113) + h_title(44)) = 141px */
+  margin-bottom: 141px; 
+}
+/* .quiz-title styling is in global.css via .style_2_font and .text-gradient */
+
+/* CSS for section section:question-form */
+.quiz-form-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* Content is left-aligned within this section */
+  padding-left: 269px; /* x-offset from Figma: 1749 (content) - 1480 (frame) */
+  box-sizing: border-box;
+  width: 100%;
+  /* Margin bottom: space to Points row. y_points_row(683) - (y_add_choice(565) + h_add_choice(29)) = 89px */
+  margin-bottom: 89px;
+}
+.question-prompt {
+  /* style_5_text applied */
+  /* width: 406px; height: 44px; from Figma */
+  /* Margin bottom: space to Choice 1. y_choice1(413) - (y_q_prompt(298) + h_q_prompt(44)) = 71px */
+  margin-bottom: 71px;
+}
+.choices-container {
+  display: flex;
+  flex-direction: column;
+  /* Gap between choice items: y_choice2(489) - (y_choice1(413) + h_choice1(63)) = 13px */
+  gap: 13px; 
+  align-items: flex-start;
+}
+.choice-item {
+  /* style_3_frame applied */
+  /* width: 383px; height: 63px; from Figma */
+}
+.choice-item__text {
+  /* style_4_text applied */
+}
+.add-choice-link {
+  /* style_4_text applied */
+  text-decoration: underline;
+  display: inline-block;
+  /* Margin top: space from Choice 2. y_add_choice(565) - (y_choice2(489) + h_choice2(63)) = 13px */
+  margin-top: 13px;
+}
+
+/* CSS for section section:settings */
+.quiz-settings-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-left: 269px; /* x-offset from Figma */
+  box-sizing: border-box;
+  width: 100%;
+  /* Gap between settings rows: y_correct_choice_row(827) - (y_points_row(683) + h_points_row(73)) = 71px */
+  gap: 71px;
+  /* Margin bottom: space to Actions row. y_actions_row(1079) - (y_correct_choice_row(827) + h_correct_choice_row(73)) = 179px */
+  margin-bottom: 179px;
+}
+.settings-row {
+  /* style_6_container applied (display:flex, align-items:center, gap:44px) */
+}
+.settings-label {
+  /* style_4_text applied */
+  flex-shrink: 0; 
+}
+.points-input-container, .correct-choice-selector {
+  /* style_7_input_box applied */
+  /* min-height: 73px set in global.css to match Figma frame height */
+}
+.points-input-value, .correct-choice-value {
+  /* style_8_input_value applied */
+}
+
+/* CSS for section section:actions */
+.quiz-actions-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  /* Left padding for first button: x_button1_frame(1649) - x_main_frame(1480) = 169px */
+  padding-left: 169px;
+  /* Right padding for second button: w_main_frame(1440) - (x_button2_relative(1043) + w_button2(330)) = 1440 - (1043 + 330) = 1440 - 1373 = 67px */
+  /* x_button2_relative = x_button2_frame(2523) - x_main_frame(1480) = 1043px */
+  padding-right: 67px;
+  box-sizing: border-box;
+}
+.action-button {
+  /* Specific styles .style_9_button and .style_11_button applied in global.css */
+  /* These include width, height, background, etc. */
+}
+/* Text styles .style_10_button_text and .style_12_button_text applied in global.css */
   </style>
+  <script src="global.js" defer></script>
 </head>
 <body>
-  <div class="passcode-container">
-    <h2 class="mb-4">Enter Quiz Passcode</h2>
-    <input
-      type="text"
-      id="passcodeInput"
-      class="form-control form-control-lg mb-3 text-center"
-      placeholder="Enter Quiz Passcode"
-      autocomplete="off"
-    />
-    <button class="btn btn-primary btn-lg" onclick="joinQuiz()">Enter Quiz</button>
-  </div>
-
-  <script>
-    function joinQuiz() {
-      const passcode = document.getElementById('passcodeInput').value.trim();
-      if (!passcode) {
-        alert('Please enter a passcode');
-        return;
-      }
-      localStorage.setItem('quizPasscode', passcode);
-      window.location.href = 'quiz.html';
-    }
-
-    // Optional: Enter key submits
-    document.getElementById('passcodeInput').addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') joinQuiz();
-    });
-  </script>
+<main class="quiz-page-wrapper">
+  <section id="section-header" class="quiz-header-section">
+    <h1 class="quiz-title style_2_font text-gradient">My Quiz</h1>
+  </section>
+<section id="section-question-form" class="quiz-form-section">
+    <p class="question-prompt style_5_text">Q. Type your question......</p>
+    <div class="choices-container">
+      <div class="choice-item style_3_frame">
+        <span class="choice-item__text style_4_text">Choice 1</span>
+      </div>
+      <div class="choice-item style_3_frame">
+        <span class="choice-item__text style_4_text">Choice 2</span>
+      </div>
+    </div>
+    <a href="#" class="add-choice-link style_4_text">Add choice.....</a>
+  </section>
+<section id="section-settings" class="quiz-settings-section">
+    <div class="settings-row style_6_container">
+      <label class="settings-label style_4_text">Specify the number of points for the question:</label>
+      <div class="points-input-container style_7_input_box">
+        <span class="points-input-value style_8_input_value">10</span>
+      </div>
+    </div>
+    <div class="settings-row style_6_container">
+      <label class="settings-label style_4_text">Specify the correct choice(s) for the question:</label>
+      <div class="correct-choice-selector style_7_input_box">
+        <span class="correct-choice-value style_8_input_value">Choice 1</span>
+      </div>
+    </div>
+  </section>
+<section id="section-actions" class="quiz-actions-section">
+    <button class="action-button style_9_button">
+      <span class="style_10_button_text">Enter New Question</span>
+    </button>
+    <button class="action-button style_11_button">
+      <span class="style_12_button_text">Create Quiz</span>
+    </button>
+  </section>
+</main> <!-- Closing quiz-page-wrapper -->
 </body>
 </html>
