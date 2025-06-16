@@ -11,5 +11,6 @@ router.delete('/:quizId/questions/:questionId', verifyToken, quizController.dele
 router.get('/:quizId/questions', verifyToken, quizController.getQuestionsByQuiz);
 router.post('/:quizId/start', verifyToken, quizController.startQuiz);
 router.get('/:quizId/state', verifyToken, quizController.getQuizState);
+router.get('/validate/:code', quizController.validateQuizCode);
 
 module.exports = router;
