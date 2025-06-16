@@ -195,3 +195,26 @@ exports.getQuizState = async (req, res) => {
     res.status(500).json({ message: 'Error getting quiz state' });
   }
 };
+
+exports.validateQuizCode = async (req, res) => {
+  const { code } = req.params;
+
+  try {
+    const quizResult = await pool.query(
+      'SELECT id, title FROM quizzes WHERE access_code = $1',
+      [code]
+    );
+
+    if (quizResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Invalid quiz code' });
+    }
+
+    res.json({ 
+      valid: true, 
+      quiz: quizResult.rows[0] 
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error validating quiz code' });
+  }
+};
