@@ -218,3 +218,38 @@ exports.validateQuizCode = async (req, res) => {
     res.status(500).json({ message: 'Error validating quiz code' });
   }
 };
+
+exports.submitAnswer = async (req, res) => {
+  const { code, questionId } = req.params;
+  const { answer, participantId } = req.body;
+
+  try {
+    const quizState = activeQuizzes.get(code);
+    if (!quizState) {
+      return res.status(404).json({ message: 'Quiz not found or not active' });
+    }
+
+    quizState.submitAnswer(participantId, questionId, answer);
+    res.json({ message: 'Answer submitted successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error submitting answer' });
+  }
+};
+
+exports.getLeaderboard = async (req, res) => {
+  const { code } = req.params;
+
+  try {
+    const quizState = activeQuizzes.get(code);
+    if (!quizState) {
+      return res.status(404).json({ message: 'Quiz not found or not active' });
+    }
+
+    const leaderboard = quizState.getLeaderboard();
+    res.json({ leaderboard });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error fetching leaderboard' });
+  }
+};
