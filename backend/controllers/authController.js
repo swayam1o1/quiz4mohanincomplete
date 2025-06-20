@@ -5,9 +5,9 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 exports.register = async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, password } = req.body;
 
-  if (!name || !email || !password || !role) {
+  if (!name || !email || !password) {
     return res.status(400).json({ message: 'All fields are required' });
   }
 
@@ -21,7 +21,7 @@ exports.register = async (req, res) => {
 
     const newUser = await pool.query(
       'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role',
-      [name, email, hashedPassword, role]
+      [name, email, hashedPassword, 'admin']
     );
 
     res.status(201).json({ user: newUser.rows[0] });
