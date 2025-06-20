@@ -14,5 +14,6 @@ router.get('/:quizId/state', verifyToken, quizController.getQuizState);
 router.get('/validate/:code', quizController.validateQuizCode);
 router.post('/:code/questions/:questionId/answer', quizController.submitAnswer);
 router.get('/:code/leaderboard', quizController.getLeaderboard);
+router.get('/list', verifyToken, quizController.listQuizzes);
 
 module.exports = router;
