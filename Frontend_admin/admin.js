@@ -199,7 +199,7 @@ quizForm.addEventListener('submit', async (e) => {
   try {
     // 1. Create the quiz (room) and get the quiz ID
     const token = localStorage.getItem('adminToken') || '';
-    const quizRes = await fetch('http://localhost:5000/api/quiz/create', {
+    const quizRes = await fetch('http://localhost:5050/api/quiz/create', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -222,7 +222,7 @@ quizForm.addEventListener('submit', async (e) => {
       } else if (q.type === 'short') {
         options = q.shortAnswers.split(',').map(ans => ({ option_text: ans.trim(), is_correct: true }));
       }
-      const qRes = await fetch(`http://localhost:5000/api/quiz/${quizId}/questions`, {
+      const qRes = await fetch(`http://localhost:5050/api/quiz/${quizId}/questions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
