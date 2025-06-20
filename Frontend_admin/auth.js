@@ -33,7 +33,7 @@ loginForm.addEventListener('submit', async (e) => {
   const password = document.getElementById('loginPassword').value;
 
   try {
-    const res = await fetch('http://localhost:5000/api/auth/login', {
+    const res = await fetch('http://localhost:5050/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -47,7 +47,14 @@ loginForm.addEventListener('submit', async (e) => {
     window.location.href = 'index.html';
 
   } catch (err) {
-    loginMessage.textContent = 'Error: ' + err.message;
+    console.error('Login Error:', err);
+    let errorMessage = 'An unknown error occurred.';
+    if (err instanceof TypeError) { // "Load failed" is often a TypeError
+        errorMessage = 'Load failed. Is the backend server running at http://localhost:5050?';
+    } else {
+        errorMessage = err.message;
+    }
+    loginMessage.textContent = 'Error: ' + errorMessage;
   }
 });
 
@@ -60,7 +67,7 @@ registerForm.addEventListener('submit', async (e) => {
   const password = document.getElementById('registerPassword').value;
 
   try {
-    const res = await fetch('http://localhost:5000/api/auth/register', {
+    const res = await fetch('http://localhost:5050/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password }),
@@ -78,6 +85,13 @@ registerForm.addEventListener('submit', async (e) => {
     }, 1500);
 
   } catch (err) {
-    registerMessage.textContent = 'Error: ' + err.message;
+    console.error('Registration Error:', err);
+    let errorMessage = 'An unknown error occurred.';
+    if (err instanceof TypeError) {
+        errorMessage = 'Load failed. Is the backend server running at http://localhost:5050?';
+    } else {
+        errorMessage = err.message;
+    }
+    registerMessage.textContent = 'Error: ' + errorMessage;
   }
 }); 
