@@ -68,6 +68,7 @@ function renderQuestions() {
 }
 
 function addQuestion() {
+  updateQuestionsFromDOM();
   questions.push({
     text: '',
     type: 'mcq',
@@ -87,6 +88,7 @@ function removeQuestion(qIndex) {
 }
 
 function addOption(qIndex) {
+  updateQuestionsFromDOM();
   questions[qIndex].options.push({ text: '', isCorrect: false });
   renderQuestions();
 }
@@ -256,6 +258,33 @@ quizForm.addEventListener('submit', async (e) => {
 logoutBtn.addEventListener('click', () => {
   localStorage.removeItem('adminToken');
   window.location.href = 'login.html';
+});
+
+// --- Past Quizzes Logic ---
+const fetchQuizzesBtn = document.getElementById('fetchQuizzesBtn');
+const quizzesListDiv = document.getElementById('quizzesList');
+
+fetchQuizzesBtn.addEventListener('click', async () => {
+  quizzesListDiv.textContent = 'Loading...';
+  try {
+    const token = localStorage.getItem('adminToken') || '';
+    const res = await fetch('http://localhost:5050/api/quiz/list', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Failed to fetch quizzes');
+    const data = await res.json();
+    if (!data.quizzes || data.quizzes.length === 0) {
+      quizzesListDiv.textContent = 'No quizzes found.';
+      return;
+    }
+    const table = document.createElement('table');
+    table.innerHTML = `<tr><th>Title</th><th>Access Code</th><th>ID</th></tr>` +
+      data.quizzes.map(q => `<tr><td>${q.title}</td><td>${q.access_code}</td><td>${q.id}</td></tr>`).join('');
+    quizzesListDiv.innerHTML = '';
+    quizzesListDiv.appendChild(table);
+  } catch (err) {
+    quizzesListDiv.textContent = 'Error: ' + err.message;
+  }
 });
 
 // Initial render
