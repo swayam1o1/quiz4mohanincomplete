@@ -4,8 +4,10 @@ module.exports = function (io) {
   io.on('connection', (socket) => {
     console.log('New client connected:', socket.id);
 
+    // When a user joins a quiz
     socket.on('joinQuiz', ({ quizId, name, questions }) => {
       if (!activeQuizzes.has(quizId)) {
+        // Create a new quiz instance with the questions
         activeQuizzes.set(quizId, new QuizState(quizId, questions));
       }
 
@@ -16,15 +18,20 @@ module.exports = function (io) {
       io.to(quizId).emit('participantsUpdate', quiz.getLeaderboard());
     });
 
+    // When quiz is started
     socket.on('startQuiz', ({ quizId }) => {
       const quiz = activeQuizzes.get(quizId);
       if (quiz) {
         const question = quiz.startQuiz();
-        io.to(quizId).emit('show-question', question);
-
+        if (question) {
+          io.to(quizId).emit('show-question', question);
+        } else {
+          socket.emit('error', 'No questions available to start the quiz.');
+        }
       }
     });
 
+    // When a participant submits an answer
     socket.on('submitAnswer', ({ quizId, questionId, answer }) => {
       const quiz = activeQuizzes.get(quizId);
       if (quiz) {
@@ -32,6 +39,7 @@ module.exports = function (io) {
       }
     });
 
+    // When moving to the next question
     socket.on('nextQuestion', ({ quizId }) => {
       const quiz = activeQuizzes.get(quizId);
       if (quiz) {
@@ -39,12 +47,13 @@ module.exports = function (io) {
         if (nextQ) {
           io.to(quizId).emit('question', nextQ);
         } else {
-          io.to(quizId).emit('quiz-ended', leaderboard);
-
+          // FIXED: Use correct leaderboard reference
+          io.to(quizId).emit('quiz-ended', quiz.getLeaderboard());
         }
       }
     });
 
+    // Handle disconnect
     socket.on('disconnect', () => {
       activeQuizzes.forEach((quiz, quizId) => {
         quiz.removeParticipant(socket.id);

@@ -114,13 +114,12 @@ exports.getQuestionsByQuiz = async (req, res) => {
 
 exports.startQuiz = async (req, res) => {
   const { quizId } = req.params;
-  const creator_id = req.user.id;
 
   try {
     // Verify quiz ownership
     const quizResult = await pool.query(
-      'SELECT * FROM quizzes WHERE id = $1 AND creator_id = $2',
-      [quizId, creator_id]
+      'SELECT * FROM quizzes WHERE id = $1',
+      [quizId]
     );
 
     if (quizResult.rows.length === 0) {
@@ -156,13 +155,12 @@ exports.startQuiz = async (req, res) => {
 
 exports.getQuizState = async (req, res) => {
   const { quizId } = req.params;
-  const creator_id = req.user.id;
 
   try {
     // Verify quiz ownership
     const quizResult = await pool.query(
-      'SELECT * FROM quizzes WHERE id = $1 AND creator_id = $2',
-      [quizId, creator_id]
+      'SELECT * FROM quizzes WHERE id = $1',
+      [quizId]
     );
 
     if (quizResult.rows.length === 0) {
@@ -215,6 +213,7 @@ exports.validateQuizCode = async (req, res) => {
       valid: true, 
       quiz: quizResult.rows[0] 
     });
+    console.log("Quiz code validated successfully:", quizResult.rows[0]);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error validating quiz code' });

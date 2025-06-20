@@ -1,6 +1,8 @@
 const socket = io("http://127.0.0.1:5050");
 const passcode = localStorage.getItem("quizPasscode");
 const userName = localStorage.getItem("userName");
+const token = localStorage.getItem('adminToken');
+
 
 
 let currentQuestion = 0;
@@ -17,25 +19,34 @@ window.onload = async () => {
 
   try {
     const response = await fetch(`http://127.0.0.1:5050/api/quiz/validate/${passcode}`);
-    if (!response.ok) throw new Error("Quiz not found");
+  if (!response.ok) throw new Error("Quiz not found");
+  
+  const data = await response.json();
+  const quizId = data.quiz.id;
 
-    const data = await response.json();
-    const quiz = data.quiz;
-    quizData = quiz.questions;
+  // Step 2: Get full quiz state (including questions)
+  const stateRes = await fetch(`http://127.0.0.1:5050/api/quiz/${quizId}/state`, {
+  });
 
+  if (!stateRes.ok) throw new Error("Failed to get quiz state");
+
+  const quizState = await stateRes.json();
+  quizData = quizState.questions;
+
+  console.log("Loaded questions:", quizData);
     document.getElementById("quizSection").style.display = "block";
 
     socket.emit("joinQuiz", {
-      quizId: quiz._id,
+      quizId: quizId,
       name: userName,
-      questions: quiz.questions  // 💡 this is required by backend
+      questions: quizData  // 💡 this is required by backend
     });
+    socket.emit("startQuiz", { quizId: quizId });
 
 
     socket.on("show-question", (question) => {
       currentQuestion = question.questionNumber - 1;
-      quizData = [question];
-      displayQuestion(question);
+      displayQuestion(quizData[currentQuestion]);
     });
 
     socket.on("quiz-ended", () => {
@@ -62,7 +73,7 @@ function updateTimerDisplay() {
 
 function displayQuestion(q) {
   clearInterval(questionTimer);
-  questionTime = q.duration || 60;
+  questionTime = q.time_limit || 60;
 
   updateTimerDisplay();
 
@@ -70,18 +81,18 @@ function displayQuestion(q) {
   document.getElementById("nextBtn").style.display = "none";
 
   const progressBar = document.getElementById("progressBar");
-  progressBar.style.width = `${(q.questionNumber / q.totalQuestions) * 100}%`;
-  progressBar.innerText = `Q${q.questionNumber}/${q.totalQuestions}`;
+  progressBar.style.width = `${((currentQuestion + 1) / quizData.length) * 100}%`;
+  progressBar.innerText = `Q${currentQuestion + 1}/${quizData.length}`;
 
   document.getElementById("quiz").innerHTML = `
-    <h5>Question ${q.questionNumber} of ${q.totalQuestions}: ${q.question}</h5>
+    <h5>Question ${currentQuestion + 1} of ${quizData.length}: ${q.question_text}</h5>
     ${q.options.map((opt, idx) => `
       <div class="form-check">
         <input class="form-check-input" type="radio" name="option" value="${idx}" id="opt${idx}">
-        <label class="form-check-label" for="opt${idx}">${opt}</label>
+        <label class="form-check-label" for="opt${idx}">${opt.option_text}</label>
       </div>
     `).join("")}
-    <button class="btn btn-success mt-3" onclick="checkAnswer('${q._id}')">Submit Answer</button>
+    <button class="btn btn-success mt-3" onclick="checkAnswer(${q.id})">Submit Answer</button>
   `;
 
   questionTimer = setInterval(() => {
@@ -89,10 +100,11 @@ function displayQuestion(q) {
     updateTimerDisplay();
     if (questionTime === 0) {
       clearInterval(questionTimer);
-      checkAnswer(q._id, true);
+      checkAnswer(q.id, true);
     }
   }, 1000);
 }
+
 
 function checkAnswer(questionId, autoSubmit = false) {
   clearInterval(questionTimer);
@@ -126,6 +138,15 @@ function checkAnswer(questionId, autoSubmit = false) {
     submitBtn.disabled = true;
     submitBtn.innerText = "Submitted";
   }
+  setTimeout(() => {
+  currentQuestion++;
+  if (currentQuestion < quizData.length) {
+    displayQuestion(quizData[currentQuestion]);
+  } else {
+    submitQuiz();
+  }
+}, 2000); // wait 2 seconds before moving to next
+
 }
 
 function showAutoSubmitMessage() {
@@ -142,11 +163,25 @@ async function submitQuiz() {
   progressBar.style.width = `100%`;
   progressBar.innerText = `Completed`;
 
-  document.getElementById("quiz").innerHTML = '<h4>Quiz Completed ✅</h4>';
+  // 🔢 Count correct answers
+  let correctCount = 0;
+  userAnswers.forEach((ans, idx) => {
+    const correctOption = quizData[idx].options.find(opt => opt.is_correct);
+    if (quizData[idx].options[ans.answer]?.id === correctOption?.id) {
+      correctCount++;
+    }
+  });
+
+  // ✅ Show final score
+  document.getElementById("quiz").innerHTML = `
+    <h4>Quiz Completed ✅</h4>
+    <p>You scored <strong>${correctCount} out of ${quizData.length}</strong>.</p>
+  `;
   document.getElementById("feedback").innerText = '';
   document.getElementById("timer").innerText = '';
   document.getElementById("nextBtn").style.display = 'none';
 
+  // 📤 Submit to backend
   try {
     const response = await fetch("http://127.0.0.1:5050/api/submit", {
       method: "POST",
@@ -168,3 +203,4 @@ async function submitQuiz() {
   localStorage.removeItem("quizPasscode");
   localStorage.removeItem("userName");
 }
+
