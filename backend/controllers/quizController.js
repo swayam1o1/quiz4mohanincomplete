@@ -198,6 +198,8 @@ exports.getQuizState = async (req, res) => {
 
 exports.validateQuizCode = async (req, res) => {
   const { code } = req.params;
+  console.log("Received passcode:", req.params.code);
+
 
   try {
     const quizResult = await pool.query(

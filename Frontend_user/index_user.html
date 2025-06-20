@@ -80,7 +80,8 @@
       }
 
       try {
-        const res = await fetch(`/validate/${passcode}`);
+        const res = await fetch(`http://127.0.0.1:5050/api/quiz/validate/${passcode}`);
+        console.log("res", res)
         if (!res.ok) throw new Error("Invalid passcode");
 
         const data = await res.json();
@@ -105,7 +106,7 @@
         return;
       }
       localStorage.setItem("userName", name);
-      window.location.href = "quiz.html";
+      window.location.href = "quiz_user.html";
     }
 
     document.getElementById("passcodeInput").addEventListener("keydown", function(e) {

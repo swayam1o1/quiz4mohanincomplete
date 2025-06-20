@@ -1,7 +1,6 @@
-const socket = io();
+const socket = io("http://127.0.0.1:5050");
 const passcode = localStorage.getItem("quizPasscode");
 const userName = localStorage.getItem("userName");
-socket.emit("join-quiz", { quizId: passcode, name: userName });
 
 
 let currentQuestion = 0;
@@ -17,17 +16,21 @@ window.onload = async () => {
   }
 
   try {
-    const response = await fetch(`/validate/${passcode}`);
+    const response = await fetch(`http://127.0.0.1:5050/api/quiz/validate/${passcode}`);
     if (!response.ok) throw new Error("Quiz not found");
 
     const data = await response.json();
     const quiz = data.quiz;
     quizData = quiz.questions;
 
-    // ✅ Only emit once, with name included
-    socket.emit("join-quiz", { quizId: quiz._id, name: userName });
-
     document.getElementById("quizSection").style.display = "block";
+
+    socket.emit("joinQuiz", {
+      quizId: quiz._id,
+      name: userName,
+      questions: quiz.questions  // 💡 this is required by backend
+    });
+
 
     socket.on("show-question", (question) => {
       currentQuestion = question.questionNumber - 1;
@@ -145,7 +148,7 @@ async function submitQuiz() {
   document.getElementById("nextBtn").style.display = 'none';
 
   try {
-    const response = await fetch("/api/submit", {
+    const response = await fetch("http://127.0.0.1:5050/api/submit", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

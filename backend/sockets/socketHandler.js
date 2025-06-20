@@ -1,100 +1,56 @@
-// Store active quizzes and their states
-const activeQuizzes = new Map();
+const { activeQuizzes, QuizState } = require('./quizState');
 
-class QuizState {
-  constructor(quizId, questions) {
-    this.quizId = quizId;
-    this.questions = questions;
-    this.currentQuestionIndex = -1;
-    this.isActive = false;
-    this.participants = new Map(); // Map of socketId -> { name, score }
-    this.answers = new Map(); // Map of questionId -> Map of socketId -> answer
-  }
+module.exports = function (io) {
+  io.on('connection', (socket) => {
+    console.log('New client connected:', socket.id);
 
-  startQuiz() {
-    this.isActive = true;
-    this.currentQuestionIndex = 0;
-    return this.getCurrentQuestion();
-  }
+    socket.on('joinQuiz', ({ quizId, name, questions }) => {
+      if (!activeQuizzes.has(quizId)) {
+        activeQuizzes.set(quizId, new QuizState(quizId, questions));
+      }
 
-  nextQuestion() {
-    if (this.currentQuestionIndex < this.questions.length - 1) {
-      this.currentQuestionIndex++;
-      return this.getCurrentQuestion();
-    }
-    return null;
-  }
+      const quiz = activeQuizzes.get(quizId);
+      quiz.addParticipant(socket.id, name);
 
-  getCurrentQuestion() {
-    if (this.currentQuestionIndex >= 0 && this.currentQuestionIndex < this.questions.length) {
-      return {
-        ...this.questions[this.currentQuestionIndex],
-        questionNumber: this.currentQuestionIndex + 1,
-        totalQuestions: this.questions.length
-      };
-    }
-    return null;
-  }
+      socket.join(quizId);
+      io.to(quizId).emit('participantsUpdate', quiz.getLeaderboard());
+    });
 
-  addParticipant(socketId, name) {
-    this.participants.set(socketId, { name, score: 0 });
-  }
+    socket.on('startQuiz', ({ quizId }) => {
+      const quiz = activeQuizzes.get(quizId);
+      if (quiz) {
+        const question = quiz.startQuiz();
+        io.to(quizId).emit('show-question', question);
 
-  removeParticipant(socketId) {
-    this.participants.delete(socketId);
-  }
-
-  submitAnswer(socketId, questionId, answer) {
-    if (!this.answers.has(questionId)) {
-      this.answers.set(questionId, new Map());
-    }
-    this.answers.get(questionId).set(socketId, answer);
-  }
-
-  getQuestionStats(questionId) {
-    const questionAnswers = this.answers.get(questionId);
-    if (!questionAnswers) return null;
-
-    const stats = {
-      totalParticipants: this.participants.size,
-      answers: {}
-    };
-
-    // Count answers for each option
-    questionAnswers.forEach((answer) => {
-      if (Array.isArray(answer)) {
-        // Multiple choice
-        answer.forEach((option) => {
-          stats.answers[option] = (stats.answers[option] || 0) + 1;
-        });
-      } else {
-        // Single choice or typed answer
-        stats.answers[answer] = (stats.answers[answer] || 0) + 1;
       }
     });
 
-    return stats;
-  }
+    socket.on('submitAnswer', ({ quizId, questionId, answer }) => {
+      const quiz = activeQuizzes.get(quizId);
+      if (quiz) {
+        quiz.submitAnswer(socket.id, questionId, answer);
+      }
+    });
 
-  getLeaderboard() {
-    const leaderboard = Array.from(this.participants.entries()).map(([socketId, data]) => ({
-      socketId,
-      name: data.name,
-      score: data.score
-    }));
+    socket.on('nextQuestion', ({ quizId }) => {
+      const quiz = activeQuizzes.get(quizId);
+      if (quiz) {
+        const nextQ = quiz.nextQuestion();
+        if (nextQ) {
+          io.to(quizId).emit('question', nextQ);
+        } else {
+          io.to(quizId).emit('quiz-ended', leaderboard);
 
-    return leaderboard.sort((a, b) => b.score - a.score);
-  }
+        }
+      }
+    });
 
-  updateScore(socketId, points) {
-    const participant = this.participants.get(socketId);
-    if (participant) {
-      participant.score += points;
-    }
-  }
-}
-
-module.exports = {
-  activeQuizzes,
-  QuizState
-}; 
+    socket.on('disconnect', () => {
+      activeQuizzes.forEach((quiz, quizId) => {
+        quiz.removeParticipant(socket.id);
+        io.to(quizId).emit('participantsUpdate', quiz.getLeaderboard());
+      });
+      console.log('Client disconnected:', socket.id);
+    });
+  });
+};
