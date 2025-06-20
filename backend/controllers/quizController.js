@@ -253,3 +253,18 @@ exports.getLeaderboard = async (req, res) => {
     res.status(500).json({ message: 'Error fetching leaderboard' });
   }
 };
+
+exports.listQuizzes = async (req, res) => {
+  try {
+    // Only show quizzes created by the logged-in admin
+    const creator_id = req.user.id;
+    const result = await pool.query(
+      'SELECT id, title, access_code FROM quizzes WHERE creator_id = $1 ORDER BY id DESC',
+      [creator_id]
+    );
+    res.json({ quizzes: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error fetching quizzes' });
+  }
+};
