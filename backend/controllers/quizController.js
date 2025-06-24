@@ -114,13 +114,12 @@ exports.getQuestionsByQuiz = async (req, res) => {
 
 exports.startQuiz = async (req, res) => {
   const { quizId } = req.params;
-  const creator_id = req.user.id;
 
   try {
     // Verify quiz ownership
     const quizResult = await pool.query(
-      'SELECT * FROM quizzes WHERE id = $1 AND creator_id = $2',
-      [quizId, creator_id]
+      'SELECT * FROM quizzes WHERE id = $1',
+      [quizId]
     );
 
     if (quizResult.rows.length === 0) {
@@ -156,13 +155,12 @@ exports.startQuiz = async (req, res) => {
 
 exports.getQuizState = async (req, res) => {
   const { quizId } = req.params;
-  const creator_id = req.user.id;
 
   try {
     // Verify quiz ownership
     const quizResult = await pool.query(
-      'SELECT * FROM quizzes WHERE id = $1 AND creator_id = $2',
-      [quizId, creator_id]
+      'SELECT * FROM quizzes WHERE id = $1',
+      [quizId]
     );
 
     if (quizResult.rows.length === 0) {
@@ -198,6 +196,8 @@ exports.getQuizState = async (req, res) => {
 
 exports.validateQuizCode = async (req, res) => {
   const { code } = req.params;
+  console.log("Received passcode:", req.params.code);
+
 
   try {
     const quizResult = await pool.query(
@@ -213,6 +213,7 @@ exports.validateQuizCode = async (req, res) => {
       valid: true, 
       quiz: quizResult.rows[0] 
     });
+    console.log("Quiz code validated successfully:", quizResult.rows[0]);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error validating quiz code' });
@@ -251,5 +252,20 @@ exports.getLeaderboard = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error fetching leaderboard' });
+  }
+};
+
+exports.listQuizzes = async (req, res) => {
+  try {
+    // Only show quizzes created by the logged-in admin
+    const creator_id = req.user.id;
+    const result = await pool.query(
+      'SELECT id, title, access_code FROM quizzes WHERE creator_id = $1 ORDER BY id DESC',
+      [creator_id]
+    );
+    res.json({ quizzes: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error fetching quizzes' });
   }
 };

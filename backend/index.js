@@ -30,7 +30,7 @@ app.use('/api/quiz', quizRoutes);
 // Socket Handling
 require('./sockets/socketHandler')(io);
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5050;
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });

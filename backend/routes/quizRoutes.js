@@ -10,9 +10,10 @@ router.put('/:quizId/questions/:questionId', verifyToken, quizController.updateQ
 router.delete('/:quizId/questions/:questionId', verifyToken, quizController.deleteQuestion);
 router.get('/:quizId/questions', verifyToken, quizController.getQuestionsByQuiz);
 router.post('/:quizId/start', verifyToken, quizController.startQuiz);
-router.get('/:quizId/state', verifyToken, quizController.getQuizState);
+router.get('/:quizId/state', quizController.getQuizState);
 router.get('/validate/:code', quizController.validateQuizCode);
 router.post('/:code/questions/:questionId/answer', quizController.submitAnswer);
 router.get('/:code/leaderboard', quizController.getLeaderboard);
+router.get('/list', verifyToken, quizController.listQuizzes);
 
 module.exports = router;
