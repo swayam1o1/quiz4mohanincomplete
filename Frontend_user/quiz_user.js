@@ -84,15 +84,25 @@ function displayQuestion(q) {
   progressBar.style.width = `${((currentQuestion + 1) / quizData.length) * 100}%`;
   progressBar.innerText = `Q${currentQuestion + 1}/${quizData.length}`;
 
-  document.getElementById("quiz").innerHTML = `
-    <h5>Question ${currentQuestion + 1} of ${quizData.length}: ${q.question_text}</h5>
-    ${q.options.map((opt, idx) => `
+  let optionsHtml = '';
+  if (q.type === 'short') {
+    optionsHtml = `<div class="form-group">
+      <label for="typedAnswer">Your Answer:</label>
+      <input type="text" class="form-control" id="typedAnswer" placeholder="Type your answer here">
+    </div>`;
+  } else {
+    optionsHtml = q.options.map((opt, idx) => `
       <div class="form-check">
         <input class="form-check-input" type="radio" name="option" value="${idx}" id="opt${idx}">
         <label class="form-check-label" for="opt${idx}">${opt.option_text}</label>
       </div>
-    `).join("")}
-    <button class="btn btn-success mt-3" onclick="checkAnswer(${q.id})">Submit Answer</button>
+    `).join("");
+  }
+
+  document.getElementById("quiz").innerHTML = `
+    <h5>Question ${currentQuestion + 1} of ${quizData.length}: ${q.question_text}</h5>
+    ${optionsHtml}
+    <button class="btn btn-success mt-3" onclick="checkAnswer(${q.id}, '${q.type}')">Submit Answer</button>
   `;
 
   questionTimer = setInterval(() => {
@@ -100,39 +110,59 @@ function displayQuestion(q) {
     updateTimerDisplay();
     if (questionTime === 0) {
       clearInterval(questionTimer);
-      checkAnswer(q.id, true);
+      checkAnswer(q.id, q.type, true);
     }
   }, 1000);
 }
 
 
-function checkAnswer(questionId, autoSubmit = false) {
+function checkAnswer(questionId, questionType, autoSubmit = false) {
   clearInterval(questionTimer);
 
-  const selectedOption = document.querySelector('input[name="option"]:checked');
-  const answerIndex = selectedOption ? parseInt(selectedOption.value) : null;
+  let answerValue = null;
+  let submittedText = '';
+
+  if (questionType === 'short') {
+    const typedAnswer = document.getElementById('typedAnswer');
+    answerValue = typedAnswer.value;
+    submittedText = `✅ Submitted: "${answerValue}"`;
+    if (!answerValue && !autoSubmit) {
+      document.getElementById("feedback").innerText = "Please type an answer before submitting.";
+      return;
+    }
+  } else {
+    const selectedOption = document.querySelector('input[name="option"]:checked');
+    answerValue = selectedOption ? parseInt(selectedOption.value) : null;
+    submittedText = `✅ Submitted: Option ${answerValue + 1}`;
+    if (answerValue === null && !autoSubmit) {
+      document.getElementById("feedback").innerText = "Please select an option before submitting.";
+      return;
+    }
+  }
 
   userAnswers.push({
     questionId: questionId,
-    answer: answerIndex,
+    answer: answerValue,
     autoSubmitted: autoSubmit
   });
 
   const feedback = document.getElementById("feedback");
-  if (!selectedOption && !autoSubmit) {
-    feedback.innerText = "Please select an option before submitting.";
-    return;
-  } else if (autoSubmit && answerIndex === null) {
+  if (autoSubmit && answerValue === null) {
     showAutoSubmitMessage();
     feedback.innerText = "⏰ Time's up! No answer selected.";
   } else if (autoSubmit) {
     showAutoSubmitMessage();
-    feedback.innerText = `✅ Auto-submitted: Option ${answerIndex + 1}`;
+    feedback.innerText = `✅ Auto-submitted: ${questionType === 'short' ? `"${answerValue}"` : `Option ${answerValue + 1}`}`;
   } else {
-    feedback.innerText = `✅ Submitted: Option ${answerIndex + 1}`;
+    feedback.innerText = submittedText;
   }
 
-  document.querySelectorAll('input[name="option"]').forEach(input => input.disabled = true);
+  if (questionType === 'short') {
+    document.getElementById('typedAnswer').disabled = true;
+  } else {
+    document.querySelectorAll('input[name="option"]').forEach(input => input.disabled = true);
+  }
+  
   const submitBtn = document.querySelector("button.btn-success");
   if (submitBtn) {
     submitBtn.disabled = true;
@@ -166,9 +196,17 @@ async function submitQuiz() {
   // 🔢 Count correct answers
   let correctCount = 0;
   userAnswers.forEach((ans, idx) => {
-    const correctOption = quizData[idx].options.find(opt => opt.is_correct);
-    if (quizData[idx].options[ans.answer]?.id === correctOption?.id) {
-      correctCount++;
+    const question = quizData[idx];
+    if (question.type === 'short') {
+      const correctAnswer = question.options.find(opt => opt.is_correct)?.option_text;
+      if (typeof ans.answer === 'string' && correctAnswer && ans.answer.trim().toLowerCase() === correctAnswer.trim().toLowerCase()) {
+        correctCount++;
+      }
+    } else {
+      const correctOption = question.options.find(opt => opt.is_correct);
+      if (question.options[ans.answer]?.id === correctOption?.id) {
+        correctCount++;
+      }
     }
   });
 
@@ -176,31 +214,112 @@ async function submitQuiz() {
   document.getElementById("quiz").innerHTML = `
     <h4>Quiz Completed ✅</h4>
     <p>You scored <strong>${correctCount} out of ${quizData.length}</strong>.</p>
+    <p>Redirecting to leaderboard...</p>
   `;
   document.getElementById("feedback").innerText = '';
   document.getElementById("timer").innerText = '';
   document.getElementById("nextBtn").style.display = 'none';
 
-  // 📤 Submit to backend
-  try {
-    const response = await fetch("http://127.0.0.1:5050/api/submit", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        quizId: passcode,
-        name: userName,
-        answers: userAnswers
-      })
-    });
-    const result = await response.json();
-    console.log("Submitted to backend:", result);
-  } catch (err) {
-    console.error("Failed to submit answers to backend:", err);
-  }
+  // Call the new submission function
+  submitParticipant(passcode, userName, correctCount);
 
   localStorage.removeItem("quizPasscode");
   localStorage.removeItem("userName");
 }
 
+/**
+ * Submits a participant's quiz results to the server.
+ *
+ * @param {string} quizId - The access code for the quiz.
+ * @param {string} name - The name of the participant.
+ * @param {number} score - The final score achieved by the participant.
+ */
+function submitParticipant(quizId, name, score) {
+  // The endpoint on your server to send the data to.
+  const endpoint = 'http://localhost:5050/api/quiz/submit';
+
+  // The data to be sent, formatted as a JavaScript object.
+  const data = {
+    quizId: quizId,
+    name: name,
+    score: score
+  };
+
+  // Use the Fetch API to make the POST request.
+  fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    // Convert the JavaScript object to a JSON string for the request body.
+    body: JSON.stringify(data)
+  })
+  .then(response => {
+    // Check if the server responded with a success status (e.g., 200-299).
+    if (!response.ok) {
+      // If not, throw an error to be caught by the .catch block.
+      throw new Error(`Submission failed with status: ${response.status}`);
+    }
+    // Parse the JSON response from the server (e.g., { message: "Submission successful" }).
+    return response.json();
+  })
+  .then(responseData => {
+    console.log('Server response:', responseData.message);
+    
+    // --- After successful submission, call loadLeaderboard ---
+    console.log(`Submission successful for ${name}. Loading leaderboard for quiz ${quizId}...`);
+    loadLeaderboard(quizId);
+  })
+  .catch(error => {
+    // Handle any errors that occurred during the fetch operation.
+    console.error('Error during participant submission:', error);
+    // You could display an error message to the user here.
+    document.getElementById("quiz").innerHTML += `<p style="color:red;">Could not save score to leaderboard. ${error.message}</p>`;
+  });
+}
+
+function loadLeaderboard(quizId) {
+  // In a real application, you would redirect to the leaderboard page or fetch its data here.
+  window.location.href = `Leaderboard.html?quiz=${quizId}`; // ✅ correct key
+}
+
+function finishQuiz() {
+  // 1. Get user info from localStorage
+  const name = localStorage.getItem("username");
+  const quiz_id = localStorage.getItem("quiz_id");
+  const score = calculateScore(); // Will use real or mock implementation
+
+  // 2. Submit the result to the backend
+  fetch('http://localhost:3000/submit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ quiz_id, name, score })
+  })
+  .then(response => {
+    if (!response.ok) throw new Error("Submission failed");
+    return response.json();
+  })
+  .then(() => {
+    // 3. Redirect to leaderboard page for this quiz
+    window.location.href = `leaderboard.html?quiz=${quiz_id}`;
+  })
+  .catch(err => {
+    alert("Error submitting score: " + err.message);
+  });
+}
+
+// --- Mock calculateScore if not defined ---
+if (typeof calculateScore !== 'function') {
+  function calculateScore() {
+    // Replace with your real scoring logic
+    return Math.floor(Math.random() * 100);
+  }
+}
+
+// --- Call finishQuiz when quiz is completed ---
+// If you have a function that is called when the quiz ends, call finishQuiz() there.
+// For demonstration, here's a placeholder:
+// function onQuizComplete() {
+//   finishQuiz();
+// }
+// You should replace this with your actual quiz completion logic.
