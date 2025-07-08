@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboard Test</title>
+    <style>
+        body { font-family: sans-serif; padding: 2em; line-height: 1.5; }
+        .container { max-width: 600px; margin: auto; }
+        input { width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box; }
+        button { padding: 10px 15px; cursor: pointer; }
+        #leaderboard { margin-top: 2em; }
+        table { width:100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background-color: #f4f4f4; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Submit Score</h1>
+        <form id="submissionForm">
+            <label for="quizId">Quiz ID:</label>
+            <input type="text" id="quizId" value="1" required>
+
+            <label for="name">Your Name:</label>
+            <input type="text" id="name" value="Test Player" required>
+            
+            <label for="score">Score:</label>
+            <input type="number" id="score" value="100" required>
+            
+            <button type="submit">Submit Score & View Leaderboard</button>
+        </form>
+
+        <hr>
+
+        <div id="leaderboard">
+            <!-- Leaderboard will be loaded here -->
+        </div>
+    </div>
+
+  <script>
+        document.getElementById('submissionForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent the form from reloading the page
+            
+            const quizId = document.getElementById('quizId').value;
+            const name = document.getElementById('name').value;
+            const score = parseInt(document.getElementById('score').value, 10);
+
+            submitParticipant(quizId, name, score);
+        });
+
+        /**
+         * Submits a participant's quiz results to the server.
+         */
+        function submitParticipant(quizId, name, score) {
+            const endpoint = 'http://localhost:3000/submit';
+
+            fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ quiz_id: quizId, name: name, score: score })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Submission failed with status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Submission successful:', data.message);
+          loadLeaderboard(quizId);
+            })
+            .catch(error => {
+                console.error('Error submitting participant:', error);
+                alert('There was an error submitting your score.');
+            });
+        }
+
+        /**
+         * Fetches leaderboard data from the server and displays it on the page.
+         */
+        function loadLeaderboard(quizId) {
+            const leaderboardDiv = document.getElementById('leaderboard');
+            if (!leaderboardDiv) {
+                console.error('Leaderboard container element not found!');
+                return;
+            }
+
+            leaderboardDiv.innerHTML = '<p>Loading leaderboard...</p>';
+            const endpoint = `http://localhost:3000/leaderboard/${quizId}`;
+
+            fetch(endpoint)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch leaderboard with status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const leaderboard = data.leaderboard;
+
+                    if (!leaderboard || leaderboard.length === 0) {
+                        leaderboardDiv.innerHTML = '<h2>Leaderboard</h2><p>No scores yet. You are the first!</p>';
+        return;
+      }
+
+                    let tableHtml = `
+                        <h2>Leaderboard</h2>
+                        <table border="1">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Name</th>
+                                    <th>Score</th>
+                                    <th>Submitted At</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    leaderboard.forEach((player, index) => {
+                        tableHtml += `
+                            <tr>
+                                <td>${index + 1}</td>
+                                <td>${player.name}</td>
+                                <td>${player.score}</td>
+                                <td>${new Date(player.submitted_at).toLocaleString()}</td>
+                            </tr>
+                        `;
+                    });
+
+                    tableHtml += '</tbody></table>';
+                    leaderboardDiv.innerHTML = tableHtml;
+                })
+                .catch(error => {
+                    console.error('Error loading leaderboard:', error);
+                    leaderboardDiv.innerHTML = `<p style="color:red;">Could not load leaderboard. ${error.message}</p>`;
+                });
+    }
+  </script>
+
+</body>
+</html>

@@ -265,7 +265,7 @@ const fetchQuizzesBtn = document.getElementById('fetchQuizzesBtn');
 const quizzesListDiv = document.getElementById('quizzesList');
 
 fetchQuizzesBtn.addEventListener('click', async () => {
-  quizzesListDiv.textContent = 'Loading...';
+  quizzesListDiv.innerHTML = 'Loading...';
   try {
     const token = localStorage.getItem('adminToken') || '';
     const res = await fetch('http://localhost:5050/api/quiz/list', {
@@ -277,13 +277,88 @@ fetchQuizzesBtn.addEventListener('click', async () => {
       quizzesListDiv.textContent = 'No quizzes found.';
       return;
     }
-    const table = document.createElement('table');
-    table.innerHTML = `<tr><th>Title</th><th>Access Code</th><th>ID</th></tr>` +
-      data.quizzes.map(q => `<tr><td>${q.title}</td><td>${q.access_code}</td><td>${q.id}</td></tr>`).join('');
-    quizzesListDiv.innerHTML = '';
-    quizzesListDiv.appendChild(table);
+    
+    const quizListHtml = data.quizzes.map(quiz => `
+      <div class="quiz-item">
+        <div class="quiz-item-header">
+          <span><strong>Title:</strong> ${quiz.title}</span>
+          <span><strong>Access Code:</strong> ${quiz.access_code}</span>
+          <div>
+            <button class="view-questions-btn" data-quiz-id="${quiz.id}">View Questions</button>
+            <button class="view-leaderboard-btn" data-quiz-code="${quiz.access_code}">View Leaderboard</button>
+          </div>
+        </div>
+        <div class="questions-details" id="details-${quiz.id}" style="display:none;"></div>
+      </div>
+    `).join('');
+    
+    quizzesListDiv.innerHTML = quizListHtml;
+
   } catch (err) {
     quizzesListDiv.textContent = 'Error: ' + err.message;
+  }
+});
+
+quizzesListDiv.addEventListener('click', async (e) => {
+  if (e.target.classList.contains('view-leaderboard-btn')) {
+    const quizCode = e.target.getAttribute('data-quiz-code');
+    window.open(`../Frontend_user/Leaderboard.html?quizCode=${quizCode}`, '_blank');
+    return;
+  }
+
+  if (e.target.classList.contains('view-questions-btn')) {
+    const quizId = e.target.getAttribute('data-quiz-id');
+    const detailsDiv = document.getElementById(`details-${quizId}`);
+
+    if (detailsDiv.style.display === 'block') {
+      detailsDiv.style.display = 'none';
+      e.target.textContent = 'View Questions';
+      return;
+    }
+
+    e.target.textContent = 'Loading...';
+    detailsDiv.style.display = 'block';
+    detailsDiv.innerHTML = 'Loading questions...';
+
+    try {
+      const token = localStorage.getItem('adminToken') || '';
+      const res = await fetch(`http://localhost:5050/api/quiz/${quizId}/questions`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to fetch questions for this quiz.');
+      
+      const data = await res.json();
+
+      if (!data.questions || data.questions.length === 0) {
+        detailsDiv.innerHTML = '<p>This quiz has no questions.</p>';
+        e.target.textContent = 'Hide Questions';
+        return;
+      }
+      
+      const questionsHtml = data.questions.map(q => {
+        const optionsHtml = (q.options || []).map(opt => `
+          <li class="${opt.is_correct ? 'correct-answer' : ''}">
+            ${opt.option_text || 'No text'} ${opt.is_correct ? '<strong>(Correct)</strong>' : ''}
+          </li>
+        `).join('');
+
+        return `
+          <div class="question-detail-block">
+            <p><strong>Question:</strong> ${q.question_text}</p>
+            <ul>${optionsHtml}</ul>
+            <p><strong>Points:</strong> ${q.points || 1}</p>
+            <p><strong>Time Limit:</strong> ${q.time_limit} seconds</p>
+          </div>
+        `;
+      }).join('');
+
+      detailsDiv.innerHTML = `<div><h4>Questions</h4>${questionsHtml}</div>`;
+      e.target.textContent = 'Hide Questions';
+
+    } catch (err) {
+      detailsDiv.innerHTML = `<p>Error: ${err.message}</p>`;
+      e.target.textContent = 'View Questions';
+    }
   }
 });
 

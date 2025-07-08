@@ -1,46 +1,78 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Leaderboard</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboard</title>
+    <style>
+        body { font-family: sans-serif; padding: 2em; }
+        .container { max-width: 700px; margin: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 2em; }
+        th, td { padding: 0.75em 1em; border-bottom: 1px solid #ddd; text-align: center; }
+        th { background: #f0f0f0; }
+        tr:nth-child(even) { background: #fafafa; }
+        .rank { font-weight: bold; }
+        .points { color: #2a7ae2; font-weight: bold; }
+        .submitted { color: #888; font-size: 0.97em; }
+    </style>
 </head>
-<body class="p-4">
-  <div class="container">
-    <h2 class="mb-4">Leaderboard</h2>
-    <div id="leaderboard"></div>
-    <a href="index.html" class="btn btn-primary mt-4">Back to Home</a>
-  </div>
-
-  <script>
-    const passcode = localStorage.getItem("quizPasscode");
-    fetch(`/api/leaderboard/${passcode}`)
-      .then(res => res.json())
-      .then(data => {
-        const leaderboard = document.getElementById("leaderboard");
-        leaderboard.innerHTML = `
-          <table class="table table-striped">
+<body>
+    <div class="container">
+        <h1>Leaderboard</h1>
+        <table>
             <thead>
-              <tr>
-                <th>Rank</th><th>Name</th><th>Score</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${data.map((user, idx) => `
                 <tr>
-                  <td>${idx + 1}</td>
-                  <td>${user.name}</td>
-                  <td>${user.score}</td>
+                    <th>Rank</th>
+                    <th>Username</th>
+                    <th>Points</th>
+                    <th>Time Submitted</th>
                 </tr>
-              `).join("")}
-            </tbody>
-          </table>
-        `;
-      })
-      .catch(err => {
-        document.getElementById("leaderboard").innerText = "Failed to load leaderboard.";
-        console.error(err);
-      });
-  </script>
+            </thead>
+            <tbody id="leaderboard-body"></tbody>
+        </table>
+    </div>
+    <script>
+    window.onload = function() {
+        const quizId = new URLSearchParams(window.location.search).get("quiz");
+        const tbody = document.getElementById('leaderboard-body');
+        if (!quizId) {
+            tbody.innerHTML = "<tr><td colspan='4'>No quiz ID provided.</td></tr>";
+            return;
+        }
+        fetch(`http://localhost:5050/api/quiz/${quizId}/leaderboard`)
+            .then(res => {
+                if (!res.ok) throw new Error("Failed to fetch leaderboard");
+                return res.json()
+            })
+            .then(data => {
+                tbody.innerHTML = "";
+                (data.leaderboard || data).forEach((p, i) => {
+                  const submittedDate = new Date(p.submitted_at);
+                  const formattedDate = submittedDate.toLocaleString('en-IN', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                  });
+                  tbody.innerHTML += `
+                    <tr>
+                        <td class='rank'>${i + 1}</td>
+                        <td>${p.name}</td>
+                        <td class='points'>${p.score}</td>
+                        <td class='submitted'>${formattedDate}</td>
+                    </tr>
+                  `;
+                });
+                if ((data.leaderboard || data).length === 0) {
+                  tbody.innerHTML = "<tr><td colspan='4'>No participants yet.</td></tr>";
+                }
+            })
+            .catch(() => {
+                tbody.innerHTML = "<tr><td colspan='4'>Error loading leaderboard.</td></tr>";
+            });
+    };
+    </script>
 </body>
 </html>

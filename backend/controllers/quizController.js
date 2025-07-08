@@ -220,21 +220,30 @@ exports.validateQuizCode = async (req, res) => {
   }
 };
 
-exports.submitAnswer = async (req, res) => {
-  const { code, questionId } = req.params;
-  const { answer, participantId } = req.body;
+exports.submitQuiz = async (req, res) => {
+  const { quizId, name, score } = req.body;
+
+  if (quizId === undefined || name === undefined || score === undefined) {
+    return res.status(400).json({ message: 'Missing required fields: quizId, name, and score are required.' });
+  }
 
   try {
-    const quizState = activeQuizzes.get(code);
-    if (!quizState) {
-      return res.status(404).json({ message: 'Quiz not found or not active' });
+    const quizResult = await pool.query('SELECT id FROM quizzes WHERE access_code = $1', [quizId]);
+    if (quizResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Quiz not found' });
     }
+    const actualQuizId = quizResult.rows[0].id;
 
-    quizState.submitAnswer(participantId, questionId, answer);
-    res.json({ message: 'Answer submitted successfully' });
+    await pool.query(
+        'INSERT INTO participants (quiz_id, name, score) VALUES ($1, $2, $3)',
+        [actualQuizId, name, score]
+    );
+
+    res.status(201).json({ message: 'Submission successful' });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Error submitting answer' });
+    console.error('Error submitting quiz:', err);
+    res.status(500).json({ message: 'Server error during submission' });
   }
 };
 
@@ -242,15 +251,20 @@ exports.getLeaderboard = async (req, res) => {
   const { code } = req.params;
 
   try {
-    const quizState = activeQuizzes.get(code);
-    if (!quizState) {
-      return res.status(404).json({ message: 'Quiz not found or not active' });
+    const quizResult = await pool.query('SELECT id FROM quizzes WHERE access_code = $1', [code]);
+    if (quizResult.rows.length === 0) {
+        return res.status(404).json({ message: 'Quiz not found for this code.' });
     }
+    const quizId = quizResult.rows[0].id;
 
-    const leaderboard = quizState.getLeaderboard();
-    res.json({ leaderboard });
+    const leaderboardRes = await pool.query(
+      'SELECT name, score, submitted_at FROM participants WHERE quiz_id = $1 ORDER BY score DESC, submitted_at ASC',
+      [quizId]
+    );
+
+    res.status(200).json({ leaderboard: leaderboardRes.rows });
   } catch (err) {
-    console.error(err);
+    console.error('Error fetching leaderboard:', err);
     res.status(500).json({ message: 'Error fetching leaderboard' });
   }
 };
@@ -267,5 +281,30 @@ exports.listQuizzes = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error fetching quizzes' });
+  }
+};
+
+exports.getQuizQuestions = async (req, res) => {
+  const { quizId } = req.params;
+  const adminId = req.user.id;
+
+  try {
+    const quiz = await pool.query('SELECT * FROM quizzes WHERE id = $1 AND creator_id = $2', [quizId, adminId]);
+    if (quiz.rows.length === 0) {
+      return res.status(404).json({ message: 'Quiz not found or you do not have permission to view it.' });
+    }
+
+    const questionsRes = await pool.query('SELECT * FROM questions WHERE quiz_id = $1 ORDER BY id', [quizId]);
+    const questions = questionsRes.rows;
+
+    for (let i = 0; i < questions.length; i++) {
+      const optionsRes = await pool.query('SELECT * FROM options WHERE question_id = $1 ORDER BY id', [questions[i].id]);
+      questions[i].options = optionsRes.rows;
+    }
+
+    res.status(200).json({ questions });
+  } catch (error) {
+    console.error('Error fetching quiz questions:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 };

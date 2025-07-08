@@ -4,7 +4,7 @@ const activeQuizzes = new Map();
 class QuizState {
   constructor(quizId, questions) {
     this.quizId = quizId;
-    this.questions = questions;
+    this.questions = questions || [];
     this.currentQuestionIndex = -1;
     this.isActive = false;
     this.participants = new Map(); // Map of socketId -> { name, score }
