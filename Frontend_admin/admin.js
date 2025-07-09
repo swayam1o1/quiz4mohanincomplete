@@ -6,6 +6,8 @@ if (!token) {
   window.location.href = 'login.html';
 }
 
+let quizId = null; // Moved up for proper initialization
+
 const questionsContainer = document.getElementById('questionsContainer');
 const addQuestionBtn = document.getElementById('addQuestionBtn');
 const quizForm = document.getElementById('quizForm');
@@ -214,7 +216,7 @@ quizForm.addEventListener('submit', async (e) => {
       throw new Error(err.message || 'Failed to create quiz');
     }
     const quizData = await quizRes.json();
-    const quizId = quizData.quiz.id;
+    quizId = quizData.quiz.id; // Store quizId globally
     const accessCode = quizData.quiz.access_code;
     // 2. Add questions
     for (const q of questions) {
@@ -249,6 +251,8 @@ quizForm.addEventListener('submit', async (e) => {
     quizForm.reset();
     questions = [];
     renderQuestions();
+    startQuizBtn.style.display = 'inline-block';
+    nextQuestionBtn.style.display = 'none';
   } catch (err) {
     adminMessage.textContent = 'Error: ' + err.message;
   }
@@ -277,7 +281,6 @@ fetchQuizzesBtn.addEventListener('click', async () => {
       quizzesListDiv.textContent = 'No quizzes found.';
       return;
     }
-    
     const quizListHtml = data.quizzes.map(quiz => `
       <div class="quiz-item">
         <div class="quiz-item-header">
@@ -286,20 +289,25 @@ fetchQuizzesBtn.addEventListener('click', async () => {
           <div>
             <button class="view-questions-btn" data-quiz-id="${quiz.id}">View Questions</button>
             <button class="view-leaderboard-btn" data-quiz-code="${quiz.access_code}">View Leaderboard</button>
+            <button class="host-quiz-btn" data-quiz-id="${quiz.id}">Host Quiz</button>
           </div>
         </div>
         <div class="questions-details" id="details-${quiz.id}" style="display:none;"></div>
       </div>
     `).join('');
-    
     quizzesListDiv.innerHTML = quizListHtml;
-
   } catch (err) {
     quizzesListDiv.textContent = 'Error: ' + err.message;
   }
 });
 
 quizzesListDiv.addEventListener('click', async (e) => {
+  if (e.target.classList.contains('host-quiz-btn')) {
+    const quizId = e.target.getAttribute('data-quiz-id');
+    window.open(`host.html?quizId=${quizId}`, '_blank');
+    return;
+  }
+
   if (e.target.classList.contains('view-leaderboard-btn')) {
     const quizCode = e.target.getAttribute('data-quiz-code');
     window.open(`../Frontend_user/Leaderboard.html?quizCode=${quizCode}`, '_blank');
@@ -307,8 +315,9 @@ quizzesListDiv.addEventListener('click', async (e) => {
   }
 
   if (e.target.classList.contains('view-questions-btn')) {
-    const quizId = e.target.getAttribute('data-quiz-id');
-    const detailsDiv = document.getElementById(`details-${quizId}`);
+    const selectedQuizId = e.target.getAttribute('data-quiz-id');
+    quizId = selectedQuizId; // Set global quizId for other uses
+    const detailsDiv = document.getElementById(`details-${selectedQuizId}`);
 
     if (detailsDiv.style.display === 'block') {
       detailsDiv.style.display = 'none';
@@ -322,11 +331,10 @@ quizzesListDiv.addEventListener('click', async (e) => {
 
     try {
       const token = localStorage.getItem('adminToken') || '';
-      const res = await fetch(`http://localhost:5050/api/quiz/${quizId}/questions`, {
+      const res = await fetch(`http://localhost:5050/api/quiz/${selectedQuizId}/questions`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Failed to fetch questions for this quiz.');
-      
       const data = await res.json();
 
       if (!data.questions || data.questions.length === 0) {
@@ -334,7 +342,7 @@ quizzesListDiv.addEventListener('click', async (e) => {
         e.target.textContent = 'Hide Questions';
         return;
       }
-      
+
       const questionsHtml = data.questions.map(q => {
         const optionsHtml = (q.options || []).map(opt => `
           <li class="${opt.is_correct ? 'correct-answer' : ''}">
@@ -361,6 +369,80 @@ quizzesListDiv.addEventListener('click', async (e) => {
     }
   }
 });
+
+// --- SOCKET.IO ---
+const socket = io('http://127.0.0.1:5050');
+
+// Add Start Quiz and Next Question buttons (move to top for global use)
+const startQuizBtn = document.createElement('button');
+startQuizBtn.id = 'startQuizBtn';
+startQuizBtn.textContent = 'Start Quiz';
+startQuizBtn.className = 'btn btn-primary';
+startQuizBtn.style.marginRight = '10px';
+startQuizBtn.style.display = 'none';
+
+const nextQuestionBtn = document.createElement('button');
+nextQuestionBtn.id = 'nextQuestionBtn';
+nextQuestionBtn.textContent = 'Next Question';
+nextQuestionBtn.className = 'btn btn-success';
+nextQuestionBtn.style.display = 'none';
+
+document.body.appendChild(startQuizBtn);
+document.body.appendChild(nextQuestionBtn);
+
+startQuizBtn.addEventListener('click', () => {
+  console.log('Start Quiz clicked, quizId:', quizId); // Debug log
+  if (!quizId) {
+    adminMessage.textContent = 'Quiz ID not set!';
+    return;
+  }
+  socket.emit('startQuiz', { quizId });
+  startQuizBtn.style.display = 'none';
+  nextQuestionBtn.style.display = 'inline-block';
+});
+
+nextQuestionBtn.addEventListener('click', () => {
+  if (!quizId) return;
+  socket.emit('nextQuestion', { quizId });
+});
+
+// Listen for per-question stats
+socket.on('question-stats', (stats) => {
+  // Display stats in a simple modal or div
+  let statsHtml = '<h4>Question Statistics</h4>';
+  if (stats.type === 'mcq') {
+    statsHtml += '<ul>';
+    Object.entries(stats.answers).forEach(([idx, count]) => {
+      statsHtml += `<li>Option ${parseInt(idx) + 1}: ${count} responses</li>`;
+    });
+    statsHtml += '</ul>';
+  } else if (stats.type === 'short') {
+    statsHtml += `<p>Correct: ${stats.correctCount}</p><p>Incorrect: ${stats.incorrectCount}</p>`;
+  } else if (stats.type === 'tf' || stats.type === 'truefalse') {
+    statsHtml += `<p>True: ${stats.answers['True'] || 0}</p><p>False: ${stats.answers['False'] || 0}</p>`;
+  }
+  showStatsModal(statsHtml);
+});
+
+function showStatsModal(html) {
+  let modal = document.getElementById('statsModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'statsModal';
+    modal.style.position = 'fixed';
+    modal.style.top = '50%';
+    modal.style.left = '50%';
+    modal.style.transform = 'translate(-50%, -50%)';
+    modal.style.background = '#fff';
+    modal.style.padding = '30px';
+    modal.style.border = '2px solid #333';
+    modal.style.zIndex = 1000;
+    modal.style.boxShadow = '0 0 10px #333';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = html + '<br><button onclick="document.getElementById(\'statsModal\').style.display=\'none\'">Close</button>';
+  modal.style.display = 'block';
+}
 
 // Initial render
 renderQuestions();

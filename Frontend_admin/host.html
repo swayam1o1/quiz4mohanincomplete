@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Host Quiz</title>
+  <link rel="stylesheet" href="global.css">
+</head>
+<body>
+  <div class="container">
+    <h2>Host Quiz</h2>
+    <div id="hostControls">
+      <button id="startQuizBtn" class="btn btn-primary">Start Quiz</button>
+      <button id="nextQuestionBtn" class="btn btn-success" style="display:none;">Next Question</button>
+      <button id="copyUserLinkBtn" class="btn btn-info">Copy User Link</button>
+    </div>
+    <div id="currentQuestion"></div>
+    <div id="statsSection"></div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="host.js"></script>
+</body>
+</html> 

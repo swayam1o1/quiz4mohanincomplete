@@ -15,6 +15,7 @@
         .points { color: #2a7ae2; font-weight: bold; }
         .submitted { color: #888; font-size: 0.97em; }
     </style>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -32,46 +33,76 @@
         </table>
     </div>
     <script>
-    window.onload = function() {
-        const quizId = new URLSearchParams(window.location.search).get("quiz");
-        const tbody = document.getElementById('leaderboard-body');
-        if (!quizId) {
-            tbody.innerHTML = "<tr><td colspan='4'>No quiz ID provided.</td></tr>";
-            return;
-        }
-        fetch(`http://localhost:5050/api/quiz/${quizId}/leaderboard`)
-            .then(res => {
-                if (!res.ok) throw new Error("Failed to fetch leaderboard");
-                return res.json()
-            })
-            .then(data => {
-                tbody.innerHTML = "";
-                (data.leaderboard || data).forEach((p, i) => {
-                  const submittedDate = new Date(p.submitted_at);
-                  const formattedDate = submittedDate.toLocaleString('en-IN', {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: true
-                  });
-                  tbody.innerHTML += `
-                    <tr>
-                        <td class='rank'>${i + 1}</td>
-                        <td>${p.name}</td>
-                        <td class='points'>${p.score}</td>
-                        <td class='submitted'>${formattedDate}</td>
-                    </tr>
-                  `;
-                });
-                if ((data.leaderboard || data).length === 0) {
-                  tbody.innerHTML = "<tr><td colspan='4'>No participants yet.</td></tr>";
-                }
-            })
-            .catch(() => {
-                tbody.innerHTML = "<tr><td colspan='4'>Error loading leaderboard.</td></tr>";
+    const quizCode = new URLSearchParams(window.location.search).get("quiz");
+    const tbody = document.getElementById('leaderboard-body');
+    let numericQuizId = null;
+
+    function fetchLeaderboard() {
+      fetch(`http://localhost:5050/api/quiz/${quizCode}/leaderboard`)
+        .then(res => {
+          if (!res.ok) throw new Error("Failed to fetch leaderboard");
+          return res.json();
+        })
+        .then(data => {
+          tbody.innerHTML = "";
+          (data.leaderboard || data).forEach((p, i) => {
+            const submittedDate = new Date(p.submitted_at);
+            const formattedDate = submittedDate.toLocaleString('en-IN', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true
             });
+            tbody.innerHTML += `
+              <tr>
+                  <td class='rank'>${i + 1}</td>
+                  <td>${p.name}</td>
+                  <td class='points'>${p.score}</td>
+                  <td class='submitted'>${formattedDate}</td>
+              </tr>
+            `;
+          });
+          if ((data.leaderboard || data).length === 0) {
+            tbody.innerHTML = "<tr><td colspan='4'>No participants yet.</td></tr>";
+          }
+        })
+        .catch(() => {
+          tbody.innerHTML = "<tr><td colspan='4'>Error loading leaderboard.</td></tr>";
+        });
+    }
+
+    window.onload = function () {
+      if (!quizCode) {
+        tbody.innerHTML = "<tr><td colspan='4'>No quiz ID provided.</td></tr>";
+        return;
+      }
+
+      // First, fetch the numeric quizId from the backend
+      fetch(`http://localhost:5050/api/quiz/validate/${quizCode}`)
+        .then(res => {
+          if (!res.ok) throw new Error("Invalid quiz code");
+          return res.json();
+        })
+        .then(data => {
+          numericQuizId = data.quiz.id.toString();
+          fetchLeaderboard(); // Initial load
+
+          // Connect to Socket.IO
+          const socket = io("http://localhost:5050");
+          socket.emit("joinQuiz", { quizId: numericQuizId });
+
+          // Listen for leaderboard updates
+          socket.on("leaderboardUpdate", (payload) => {
+            if (payload.quizId === numericQuizId) {
+              fetchLeaderboard();
+            }
+          });
+        })
+        .catch(() => {
+          tbody.innerHTML = "<tr><td colspan='4'>Invalid quiz code.</td></tr>";
+        });
     };
     </script>
 </body>

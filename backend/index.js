@@ -3,6 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 require('dotenv').config();
+const path = require('path') ;
 
 const app = express();
 const server = http.createServer(app);
@@ -12,8 +13,15 @@ const io = new Server(server, {
   },
 });
 
+// Make io available in controllers
+app.set('io', io);
+app.use('/user', express.static(path.join(__dirname, '..', 'Frontend_user')));
+app.use('/admin', express.static(path.join(__dirname, '..', 'Frontend_admin')));
+
 // Middleware
 app.use(cors());
+app.use(express.static(path.join(__dirname, '..', 'Frontend_admin')));
+
 app.use(express.json());
 
 const authRoutes = require('./routes/authRoutes');

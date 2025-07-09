@@ -1,0 +1,147 @@
+.
+├── Frontend_admin
+│   ├── admin.js
+│   ├── auth.js
+│   ├── global.css
+│   ├── host.html
+│   ├── host.js
+│   ├── index.html
+│   └── login.html
+├── Frontend_user
+│   ├── Leaderboard.html
+│   ├── index_user.html
+│   ├── join.html
+│   ├── quiz_user.html
+│   └── quiz_user.js
+├── LICENSE
+├── admin.html
+├── backend
+│   ├── config
+│   │   └── db.js
+│   ├── controllers
+│   │   ├── authController.js
+│   │   └── quizController.js
+│   ├── index.js
+│   ├── middleware
+│   │   └── verifyToken.js
+│   ├── node_modules
+│   │   ├── @socket.io
+│   │   ├── @types
+│   │   ├── accepts
+│   │   ├── base64id
+│   │   ├── bcryptjs
+│   │   ├── body-parser
+│   │   ├── buffer-equal-constant-time
+│   │   ├── bytes
+│   │   ├── call-bind-apply-helpers
+│   │   ├── call-bound
+│   │   ├── content-disposition
+│   │   ├── content-type
+│   │   ├── cookie
+│   │   ├── cookie-signature
+│   │   ├── cors
+│   │   ├── debug
+│   │   ├── depd
+│   │   ├── dotenv
+│   │   ├── dunder-proto
+│   │   ├── ecdsa-sig-formatter
+│   │   ├── ee-first
+│   │   ├── encodeurl
+│   │   ├── engine.io
+│   │   ├── engine.io-parser
+│   │   ├── es-define-property
+│   │   ├── es-errors
+│   │   ├── es-object-atoms
+│   │   ├── escape-html
+│   │   ├── etag
+│   │   ├── express
+│   │   ├── finalhandler
+│   │   ├── forwarded
+│   │   ├── fresh
+│   │   ├── function-bind
+│   │   ├── get-intrinsic
+│   │   ├── get-proto
+│   │   ├── gopd
+│   │   ├── has-symbols
+│   │   ├── hasown
+│   │   ├── http-errors
+│   │   ├── iconv-lite
+│   │   ├── inherits
+│   │   ├── ipaddr.js
+│   │   ├── is-promise
+│   │   ├── jsonwebtoken
+│   │   ├── jwa
+│   │   ├── jws
+│   │   ├── lodash.includes
+│   │   ├── lodash.isboolean
+│   │   ├── lodash.isinteger
+│   │   ├── lodash.isnumber
+│   │   ├── lodash.isplainobject
+│   │   ├── lodash.isstring
+│   │   ├── lodash.once
+│   │   ├── math-intrinsics
+│   │   ├── media-typer
+│   │   ├── merge-descriptors
+│   │   ├── mime-db
+│   │   ├── mime-types
+│   │   ├── ms
+│   │   ├── negotiator
+│   │   ├── object-assign
+│   │   ├── object-inspect
+│   │   ├── on-finished
+│   │   ├── once
+│   │   ├── parseurl
+│   │   ├── path-to-regexp
+│   │   ├── pg
+│   │   ├── pg-cloudflare
+│   │   ├── pg-connection-string
+│   │   ├── pg-int8
+│   │   ├── pg-pool
+│   │   ├── pg-protocol
+│   │   ├── pg-types
+│   │   ├── pgpass
+│   │   ├── postgres-array
+│   │   ├── postgres-bytea
+│   │   ├── postgres-date
+│   │   ├── postgres-interval
+│   │   ├── proxy-addr
+│   │   ├── qs
+│   │   ├── range-parser
+│   │   ├── raw-body
+│   │   ├── router
+│   │   ├── safe-buffer
+│   │   ├── safer-buffer
+│   │   ├── semver
+│   │   ├── send
+│   │   ├── serve-static
+│   │   ├── setprototypeof
+│   │   ├── side-channel
+│   │   ├── side-channel-list
+│   │   ├── side-channel-map
+│   │   ├── side-channel-weakmap
+│   │   ├── socket.io
+│   │   ├── socket.io-adapter
+│   │   ├── socket.io-parser
+│   │   ├── split2
+│   │   ├── statuses
+│   │   ├── toidentifier
+│   │   ├── type-is
+│   │   ├── undici-types
+│   │   ├── unpipe
+│   │   ├── vary
+│   │   ├── wrappy
+│   │   ├── ws
+│   │   └── xtend
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── routes
+│   │   ├── authRoutes.js
+│   │   └── quizRoutes.js
+│   └── sockets
+│       ├── quizstate.js
+│       └── socketHandler.js
+├── index.html
+├── structure.txt
+└── t.js
+
+117 directories, 28 files

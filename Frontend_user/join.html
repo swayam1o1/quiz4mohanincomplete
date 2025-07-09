@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Join Quiz</title>
+</head>
+<body>
+  <h2>Join the Quiz</h2>
+  <form id="joinForm">
+    <label for="name">Your Name:</label>
+    <input type="text" id="name" required />
+    <br /><br />
+
+    <!-- ✅ Hidden Quiz ID input -->
+    <input type="hidden" id="quizId" required />
+
+    <button type="submit">Join</button>
+  </form>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const quizId = urlParams.get("quizId");
+    if (quizId) {
+      document.getElementById("quizId").value = quizId;
+    } else {
+      alert("Missing quiz ID in URL.");
+    }
+
+    document.getElementById("joinForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const name = document.getElementById("name").value;
+      const quizId = document.getElementById("quizId").value;
+
+      localStorage.setItem("userName", name);
+      localStorage.setItem("quizId", quizId);
+
+      window.location.href = `/user/quiz_user.html?quizId=${quizId}`;
+    });
+  </script>
+</body>
+</html>

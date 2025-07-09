@@ -228,16 +228,24 @@ exports.submitQuiz = async (req, res) => {
   }
 
   try {
-    const quizResult = await pool.query('SELECT id FROM quizzes WHERE access_code = $1', [quizId]);
+    // Look up quiz by access_code (quizId in frontend is actually the access_code)
+    const quizResult = await pool.query('SELECT id, access_code FROM quizzes WHERE access_code = $1', [quizId]);
     if (quizResult.rows.length === 0) {
       return res.status(404).json({ message: 'Quiz not found' });
     }
     const actualQuizId = quizResult.rows[0].id;
+    const accessCode = quizResult.rows[0].access_code;
 
     await pool.query(
         'INSERT INTO participants (quiz_id, name, score) VALUES ($1, $2, $3)',
         [actualQuizId, name, score]
     );
+
+    // Emit leaderboard update to the quiz code room (string)
+    const io = req.app.get('io');
+    if (io) {
+      io.to(accessCode).emit('leaderboardUpdate', { quizId: accessCode });
+    }
 
     res.status(201).json({ message: 'Submission successful' });
 
