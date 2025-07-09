@@ -48,7 +48,7 @@ console.log(quiz.getLeaderboard());
     
         const question = quiz.startQuiz();
         if (question) {
-          io.to(quizId).emit('show-question', question);
+          socket.to(quizId).emit('show-question', question);
         } else {
           socket.emit('error', 'No questions available to start the quiz.');
         }
