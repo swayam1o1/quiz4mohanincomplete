@@ -1,11 +1,13 @@
 const { activeQuizzes, QuizState } = require('./quizState');
+const fetch = require('node-fetch');
+const pool = require('../config/db');
 
 module.exports = function (io) {
   io.on('connection', (socket) => {
     console.log('New client connected:', socket.id);
 
     // When a user joins a quiz
-    socket.on('joinQuiz', ({ quizId, name, questions }) => {
+    socket.on('joinQuiz', async ({ quizId, name, questions }) => {
       console.log(`[Server] Received joinQuiz from ${socket.id} with quizId: ${quizId}`);
 
       quizId = Number(quizId); // Ensure quizId is a number
@@ -14,7 +16,17 @@ module.exports = function (io) {
       if (!quiz) {
         // Only host should send questions — use length check
         if (questions && questions.length > 0) {
-          quiz = new QuizState(quizId, questions);
+          // Fetch access code from DB
+          let accessCode = null;
+          try {
+            const result = await pool.query('SELECT access_code FROM quizzes WHERE id = $1', [quizId]);
+            if (result.rows.length > 0) {
+              accessCode = result.rows[0].access_code;
+            }
+          } catch (err) {
+            console.error('Error fetching access code for quiz:', err);
+          }
+          quiz = new QuizState(quizId, questions, accessCode);
           activeQuizzes.set(quizId, quiz);
           console.log(`[Server] Created quiz ${quizId} with ${questions.length} questions`);
         } else {
@@ -85,6 +97,29 @@ console.log(quiz.getLeaderboard());
         } else {
           io.to(quizId).emit('quiz-ended', quiz.getLeaderboard());
         }
+      }
+    });
+
+    // When admin finishes the quiz
+    socket.on('finishQuiz', async ({ quizId }) => {
+      quizId = Number(quizId); // Ensure quizId is a number
+      const quiz = activeQuizzes.get(quizId);
+      if (quiz) {
+        const leaderboard = quiz.getLeaderboard();
+        // For each participant, submit their score using accessCode
+        for (const participant of leaderboard) {
+          try {
+            await fetch('http://localhost:5050/api/quiz/submit', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ quizId: quiz.accessCode, name: participant.name, score: participant.score })
+            });
+          } catch (err) {
+            console.error('Error submitting participant score:', err);
+          }
+        }
+        io.to(quizId).emit('quiz-ended', leaderboard);
+        activeQuizzes.delete(quizId); // Optionally clear quiz from memory
       }
     });
 

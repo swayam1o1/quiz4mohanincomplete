@@ -8,6 +8,7 @@ const nextQuestionBtn = document.getElementById('nextQuestionBtn');
 const currentQuestionDiv = document.getElementById('currentQuestion');
 const statsSection = document.getElementById('statsSection');
 const copyUserLinkBtn = document.getElementById('copyUserLinkBtn');
+const finishQuizBtn = document.getElementById('finishQuizBtn');
 
 let currentQuestion = null;
 let lastQuestionReached = false;
@@ -27,9 +28,16 @@ function showStartButton() {
   nextQuestionBtn.style.display = 'none';
 }
 
+function showFinishButton() {
+  startQuizBtn.style.display = 'none';
+  nextQuestionBtn.style.display = 'none';
+  finishQuizBtn.style.display = 'inline-block';
+}
+
 function showNextButton() {
   startQuizBtn.style.display = 'none';
   nextQuestionBtn.style.display = 'inline-block';
+  finishQuizBtn.style.display = 'inline-block';
 }
 
 function hideButtons() {
@@ -134,7 +142,17 @@ socket.on('question-stats', (stats) => {
 });
 
 socket.on('quiz-ended', (leaderboard) => {
-  renderLeaderboard(leaderboard);
+  // Optionally display leaderboard or message
+  currentQuestionDiv.innerHTML = '<h3>Quiz Finished!</h3>';
+  statsSection.innerHTML = '<pre>' + JSON.stringify(leaderboard, null, 2) + '</pre>';
+  hideButtons();
+  finishQuizBtn.style.display = 'none';
+});
+
+finishQuizBtn.addEventListener('click', () => {
+  if (!quizId) return;
+  socket.emit('finishQuiz', { quizId });
+  finishQuizBtn.disabled = true;
 });
 
 copyUserLinkBtn.addEventListener('click', () => {
