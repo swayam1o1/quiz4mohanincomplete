@@ -8,6 +8,7 @@ module.exports = function (io) {
     socket.on('joinQuiz', ({ quizId, name, questions }) => {
       console.log(`[Server] Received joinQuiz from ${socket.id} with quizId: ${quizId}`);
 
+      quizId = Number(quizId); // Ensure quizId is a number
       let quiz = activeQuizzes.get(quizId);
     
       if (!quiz) {
@@ -38,6 +39,7 @@ console.log(quiz.getLeaderboard());
 
     // When quiz is started
     socket.on('startQuiz', ({ quizId }) => {
+      quizId = Number(quizId); // Ensure quizId is a number
       const quiz = activeQuizzes.get(quizId);
       if (quiz) {
         console.log(`[Server] Starting quiz ${quizId} with ${quiz.questions.length} questions`);
@@ -58,6 +60,7 @@ console.log(quiz.getLeaderboard());
 
     // When a participant submits an answer
     socket.on('submitAnswer', ({ quizId, questionId, answer }) => {
+      quizId = Number(quizId); // Ensure quizId is a number
       const quiz = activeQuizzes.get(quizId);
       if (quiz) {
         quiz.submitAnswer(socket.id, questionId, answer);
@@ -67,6 +70,7 @@ console.log(quiz.getLeaderboard());
 
     // When moving to the next question (admin triggers this)
     socket.on('nextQuestion', ({ quizId }) => {
+      quizId = Number(quizId); // Ensure quizId is a number
       const quiz = activeQuizzes.get(quizId);
       if (quiz) {
         // Send stats for the previous question before moving on

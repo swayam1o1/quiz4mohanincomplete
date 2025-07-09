@@ -2,7 +2,8 @@ const urlParams = new URLSearchParams(window.location.search);
 const quizIdFromURL = urlParams.get("quizId");
 
 // Redirect to join.html if name is missing from localStorage
-if (!localStorage.getItem("quizName") || !quizIdFromURL) {
+if (!localStorage.getItem("quizId") || !quizIdFromURL) {
+  alert("not found");
   window.location.href = `/user/join.html?quizId=${quizIdFromURL || ''}`;
 }
 
@@ -14,7 +15,6 @@ socket.on("pongCheck", () => console.log("✅ pongCheck received from server"));
 
 const passcode = localStorage.getItem("quizPasscode");
 const userName = localStorage.getItem("userName");
-const token = localStorage.getItem('adminToken');
 
 
 
@@ -28,17 +28,10 @@ window.onload = async () => {
   // Read quizId from URL and name from localStorage
   const quizId = localStorage.getItem("quizId");
 
-  const name = localStorage.getItem("quizName") || localStorage.getItem("userName");
+  const userName = localStorage.getItem("userName");
 
   if (!passcode || !userName) {
-    window.location.href = "join.html"; // or your intended entry page
-    return;
-  }
-  
-
-  if (!passcode || !userName) {
-    // Redirect to entry page if missing info
-    window.location.href = "index_user.html";
+    window.location.href = `join.html?quizId=${quizId}`; // or your intended entry page
     return;
   }
 
