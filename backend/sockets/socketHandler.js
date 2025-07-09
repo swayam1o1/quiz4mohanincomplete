@@ -25,23 +25,27 @@ module.exports = function (io) {
       quiz.addParticipant(socket.id, name);
       socket.join(quizId);
       console.log(`[Server] ${socket.id} joined quiz ${quizId}. Rooms:`, Array.from(socket.rooms));
-      console.log(`[Server] Current participants in quiz ${quizId}:`);
-      console.log(quiz.getLeaderboard());
+console.log(`[Server] Current participants in quiz ${quizId}:`);
+console.log(quiz.getLeaderboard());
 
+    
+      // ✅ Log which rooms the socket is part of (important!)
+      console.log(`[Server] ${socket.id} joined quiz ${quizId}. Rooms:`, Array.from(socket.rooms));
+    
       io.to(quizId).emit('participantsUpdate', quiz.getLeaderboard());
     });
+    
 
     // When quiz is started
     socket.on('startQuiz', ({ quizId }) => {
       const quiz = activeQuizzes.get(quizId);
       if (quiz) {
         console.log(`[Server] Starting quiz ${quizId} with ${quiz.questions.length} questions`);
-
-        socket.join(quizId); // ✅ Ensure host is in the room
-
+        
+        // ✅ Log everyone in the room
         const socketsInRoom = io.sockets.adapter.rooms.get(quizId);
         console.log(`[Server] Sockets in room ${quizId}:`, socketsInRoom ? Array.from(socketsInRoom) : 'None');
-
+    
         const question = quiz.startQuiz();
         if (question) {
           io.to(quizId).emit('show-question', question);
@@ -50,12 +54,14 @@ module.exports = function (io) {
         }
       }
     });
+    
 
     // When a participant submits an answer
     socket.on('submitAnswer', ({ quizId, questionId, answer }) => {
       const quiz = activeQuizzes.get(quizId);
       if (quiz) {
         quiz.submitAnswer(socket.id, questionId, answer);
+        // Optionally, you can check if all participants have answered and auto-broadcast stats
       }
     });
 
@@ -63,6 +69,7 @@ module.exports = function (io) {
     socket.on('nextQuestion', ({ quizId }) => {
       const quiz = activeQuizzes.get(quizId);
       if (quiz) {
+        // Send stats for the previous question before moving on
         const prevQuestion = quiz.questions[quiz.currentQuestionIndex];
         if (prevQuestion) {
           const stats = quiz.getQuestionStats(prevQuestion.id || prevQuestion._id);
@@ -85,5 +92,5 @@ module.exports = function (io) {
       });
       console.log('Client disconnected:', socket.id);
     });
-  });
-};
+});
+}
