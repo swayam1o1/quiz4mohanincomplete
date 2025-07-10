@@ -10,6 +10,7 @@ const currentQuestionDiv = document.getElementById('currentQuestion');
 const copyUserLinkBtn = document.getElementById('copyUserLinkBtn');
 const finishQuizBtn = document.getElementById('finishQuizBtn');
 const showStatsBtn = document.getElementById('showStatsBtn');
+const accessCodeDisplay = document.getElementById('accessCodeDisplay');
 
 let currentQuestion = null;
 let lastQuestionReached = false;
@@ -89,6 +90,22 @@ if (!quizId) {
       if (!res.ok) throw new Error('Failed to fetch questions for this quiz.');
       const data = await res.json();
       const questions = data.questions || [];
+      // Fetch access code for this quiz
+      let accessCode = '';
+      if (data.quiz && data.quiz.access_code) {
+        accessCode = data.quiz.access_code;
+      } else {
+        // fallback: fetch quiz info
+        const quizRes = await fetch(`http://localhost:5050/api/quiz/list`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (quizRes.ok) {
+          const quizList = await quizRes.json();
+          const found = quizList.quizzes?.find(q => String(q.id) === String(quizId));
+          if (found) accessCode = found.access_code;
+        }
+      }
+      accessCodeDisplay.textContent = accessCode ? `Access Code: ${accessCode}` : '';
       console.log('Host fetched questions:', questions);
       socket.emit('joinQuiz', {
         quizId,

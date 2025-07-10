@@ -51,7 +51,7 @@ class QuizState {
     }
     this.answers.get(questionId).set(socketId, answer);
   }
-  
+
 
   getLeaderboard() {
     const leaderboard = Array.from(this.participants.entries()).map(([socketId, data]) => ({
