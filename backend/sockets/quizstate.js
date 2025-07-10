@@ -73,32 +73,15 @@ class QuizState {
   getQuestionStats(questionId) {
     const questionAnswers = this.answers.get(questionId);
     if (!questionAnswers) return null;
-
-    // Find the question object
     const question = this.questions.find(q => (q.id || q._id) === questionId);
     if (!question) return null;
-
-    const stats = {
-      type: question.type,
-      totalParticipants: this.participants.size,
-      answers: {},
-      correctCount: 0,
-      incorrectCount: 0
-    };
-
-    if (question.type === 'mcq') {
-      // Count answers for each option index
-      question.options.forEach((opt, idx) => {
-        stats.answers[idx] = 0;
-      });
+    const stats = { type: question.type, answers: {}, correctCount: 0, incorrectCount: 0 };
+    if (question.type === 'mcq' || question.type === 'mcq_single' || question.type === 'mcq_multiple') {
+      question.options.forEach((opt, idx) => { stats.answers[idx] = 0; });
       questionAnswers.forEach((answer) => {
-        if (typeof answer === 'number') {
-          stats.answers[answer] = (stats.answers[answer] || 0) + 1;
-        }
+        if (typeof answer === 'number') stats.answers[answer] = (stats.answers[answer] || 0) + 1;
       });
     } else if (question.type === 'short') {
-      // Typed answer: count correct vs. incorrect
-      // Accept multiple correct answers, comma separated
       let correctAnswers = [];
       if (typeof question.shortAnswers === 'string') {
         correctAnswers = question.shortAnswers.split(',').map(s => s.trim().toLowerCase());

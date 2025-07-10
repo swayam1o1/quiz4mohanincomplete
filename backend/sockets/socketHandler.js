@@ -26,6 +26,8 @@ module.exports = function (io) {
           } catch (err) {
             console.error('Error fetching access code for quiz:', err);
           }
+          // Ensure all questions have an id property
+          questions = questions.map(q => ({ ...q, id: q.id || q._id }));
           quiz = new QuizState(quizId, questions, accessCode);
           activeQuizzes.set(quizId, quiz);
           console.log(`[Server] Created quiz ${quizId} with ${questions.length} questions`);
@@ -75,7 +77,9 @@ console.log(quiz.getLeaderboard());
       quizId = Number(quizId); // Ensure quizId is a number
       const quiz = activeQuizzes.get(quizId);
       if (quiz) {
+        console.log('submitAnswer:', { quizId, questionId, answer, questionIdType: typeof questionId });
         quiz.submitAnswer(socket.id, questionId, answer);
+        console.log('answers map keys after submit:', Array.from(quiz.answers.keys()), Array.from(quiz.answers.keys()).map(k => typeof k));
       }
     });
 
@@ -84,12 +88,6 @@ console.log(quiz.getLeaderboard());
       quizId = Number(quizId); // Ensure quizId is a number
       const quiz = activeQuizzes.get(quizId);
       if (quiz) {
-        // Send stats for the previous question before moving on
-        const prevQuestion = quiz.questions[quiz.currentQuestionIndex];
-        if (prevQuestion) {
-          const stats = quiz.getQuestionStats(prevQuestion.id || prevQuestion._id);
-          io.to(quizId).emit('question-stats', stats);
-        }
         const nextQ = quiz.nextQuestion();
         if (nextQ) {
           io.to(quizId).emit('show-question', nextQ);
@@ -119,6 +117,19 @@ console.log(quiz.getLeaderboard());
         }*/
         io.to(quizId).emit('quiz-ended', leaderboard);
         activeQuizzes.delete(quizId); // Optionally clear quiz from memory
+      }
+    });
+
+    // Show stats for the current question when requested
+    socket.on('showQuestionStats', ({ quizId, questionId }) => {
+      quizId = Number(quizId);
+      const quiz = activeQuizzes.get(quizId);
+      if (quiz) {
+        console.log('Show stats for quiz', quizId, 'question', questionId, 'answers map keys:', Array.from(quiz.answers.keys()));
+        const stats = quiz.getQuestionStats(questionId);
+        if (stats) {
+          io.to(quizId).emit('question-stats', stats);
+        }
       }
     });
 

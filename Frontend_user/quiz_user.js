@@ -58,7 +58,7 @@ window.onload = async () => {
     // Wait for startQuiz event from admin
     document.getElementById("quiz").innerHTML = '<h4>Waiting for quiz to start...</h4>';
     socket.on("show-question", (question) => {
-      console.log("✅ Received question from server:", question);
+      window.currentQuestion = question;
       displayQuestion(question); // ✅ Use the server-sent question directly
     });
     
@@ -184,9 +184,8 @@ function checkAnswer(questionId, questionType, autoSubmit = false) {
     answer: answerValue
   });
   // Send answer to server
-  socket.emit('submitAnswer', { quizId: passcode, questionId, answer: answerValue });
-  // Wait for stats from server before moving to next question
-  document.getElementById("quiz").innerHTML += '<div id="waitingStats"><em>Waiting for statistics...</em></div>';
+  const quizIdNum = Number(localStorage.getItem('quizId'));
+  socket.emit('submitAnswer', { quizId: quizIdNum, questionId, answer: answerValue });
 }
 
 function showAutoSubmitMessage() {
@@ -196,6 +195,48 @@ function showAutoSubmitMessage() {
     msg.style.display = 'none';
   }, 3000);
 }
+
+socket.on('question-stats', (stats) => {
+  console.log('DEBUG: window.currentQuestion', window.currentQuestion);
+  if (window.currentQuestion) {
+    console.log('DEBUG: options array', window.currentQuestion.options);
+  }
+  let statsHtml = '<h4>Question Statistics</h4>';
+  if ((stats.type === 'mcq' || stats.type === 'mcq_single' || stats.type === 'mcq_multiple') && window.currentQuestion && window.currentQuestion.options) {
+    statsHtml += '<ul>';
+    Object.entries(stats.answers).forEach(([idx, count]) => {
+      const opt = window.currentQuestion.options[idx];
+      const optText = opt?.option_text || opt?.text || `Option ${parseInt(idx) + 1}`;
+      statsHtml += `<li>${optText}: ${count} responses</li>`;
+    });
+    statsHtml += '</ul>';
+  } else if (stats.type === 'mcq' || stats.type === 'mcq_single' || stats.type === 'mcq_multiple') {
+    statsHtml += '<ul>';
+    Object.entries(stats.answers).forEach(([idx, count]) => {
+      statsHtml += `<li>Option ${parseInt(idx) + 1}: ${count} responses</li>`;
+    });
+    statsHtml += '</ul>';
+  } else if (stats.type === 'short') {
+    statsHtml += `<p>Correct: ${stats.correctCount}</p><p>Incorrect: ${stats.incorrectCount}</p>`;
+  }
+  let modal = document.getElementById('statsModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'statsModal';
+    modal.style.position = 'fixed';
+    modal.style.top = '50%';
+    modal.style.left = '50%';
+    modal.style.transform = 'translate(-50%, -50%)';
+    modal.style.background = '#fff';
+    modal.style.padding = '30px';
+    modal.style.border = '2px solid #333';
+    modal.style.zIndex = 1000;
+    modal.style.boxShadow = '0 0 10px #333';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = statsHtml + '<br><button onclick="document.getElementById(\'statsModal\').style.display=\'none\'">Close</button>';
+  modal.style.display = 'block';
+});
 
 
 async function submitQuiz() {
@@ -252,39 +293,6 @@ async function submitQuiz() {
   setTimeout(() => {
     window.location.href = `Leaderboard.html?quiz=${passcode}`;
   }, 3000);
-}
-
-function showStatsModal(stats) {
-  let statsHtml = '<h4>Question Statistics</h4>';
-  if (stats.type === 'mcq') {
-    statsHtml += '<ul>';
-    Object.entries(stats.answers).forEach(([idx, count]) => {
-      statsHtml += `<li>Option ${parseInt(idx) + 1}: ${count} responses</li>`;
-    });
-    statsHtml += '</ul>';
-  } else if (stats.type === 'short') {
-    statsHtml += `<p>Correct: ${stats.correctCount}</p><p>Incorrect: ${stats.incorrectCount}</p>`;
-  } else if (stats.type === 'tf' || stats.type === 'truefalse') {
-    statsHtml += `<p>True: ${stats.answers['True'] || 0}</p><p>False: ${stats.answers['False'] || 0}</p>`;
-  }
-  let modal = document.getElementById('statsModal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'statsModal';
-    modal.style.position = 'fixed';
-    modal.style.top = '50%';
-    modal.style.left = '50%';
-    modal.style.transform = 'translate(-50%, -50%)';
-    modal.style.background = '#fff';
-    modal.style.padding = '30px';
-    modal.style.border = '2px solid #333';
-    modal.style.zIndex = 1000;
-    modal.style.boxShadow = '0 0 10px #333';
-    document.body.appendChild(modal);
-  }
-  modal.innerHTML = statsHtml + '<br><button onclick="document.getElementById(\'statsModal\').style.display=\'none\';window.location.reload();">Close</button>';
-  modal.style.display = 'block';
-  // After closing, wait for next question from admin
 }
 
 // Make submitParticipant async and remove redirect from it
