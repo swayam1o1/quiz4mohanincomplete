@@ -290,6 +290,7 @@ fetchQuizzesBtn.addEventListener('click', async () => {
             <button class="view-questions-btn" data-quiz-id="${quiz.id}">View Questions</button>
             <button class="view-leaderboard-btn" data-quiz-code="${quiz.access_code}">View Leaderboard</button>
             <button class="host-quiz-btn" data-quiz-id="${quiz.id}">Host Quiz</button>
+            <button class="view-analytics-btn" data-quiz-id="${quiz.id}">View Quiz Analytics</button>
           </div>
         </div>
         <div class="questions-details" id="details-${quiz.id}" style="display:none;"></div>
@@ -310,7 +311,13 @@ quizzesListDiv.addEventListener('click', async (e) => {
 
   if (e.target.classList.contains('view-leaderboard-btn')) {
     const quizCode = e.target.getAttribute('data-quiz-code');
-    window.open(`../Frontend_user/Leaderboard.html?quizCode=${quizCode}`, '_blank');
+    window.open(`../user/Leaderboard.html?quiz=${quizCode}`, '_blank');
+    return;
+  }
+
+  if (e.target.classList.contains('view-analytics-btn')) {
+    const quizId = e.target.getAttribute('data-quiz-id');
+    window.open(`/admin/QuizAnalytics.html?quizId=${quizId}`, '_blank');
     return;
   }
 

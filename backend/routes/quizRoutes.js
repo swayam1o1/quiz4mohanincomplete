@@ -11,6 +11,7 @@ router.delete('/:quizId/questions/:questionId', verifyToken, quizController.dele
 router.get('/list', verifyToken, quizController.listQuizzes);
 router.get('/:quizId/questions', verifyToken, quizController.getQuizQuestions);
 router.get('/start/:quizId', verifyToken, quizController.startQuiz);
+router.get('/:quizId/analytics', quizController.getQuizAnalytics);
 
 // User-facing routes (no token required)
 router.get('/validate/:code', quizController.validateQuizCode);

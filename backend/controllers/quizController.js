@@ -361,3 +361,50 @@ exports.getQuizQuestions = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+exports.getQuizAnalytics = async (req, res) => {
+  const { quizId } = req.params;
+  try {
+    // Get all stats for this quiz
+    const statsResult = await pool.query(
+      'SELECT * FROM question_stats WHERE quiz_id = $1 ORDER BY session_date DESC, question_id ASC',
+      [quizId]
+    );
+    // Get all questions for this quiz
+    const questionsResult = await pool.query(
+      'SELECT id, question_text, type, correct_answers FROM questions WHERE quiz_id = $1',
+      [quizId]
+    );
+    // Get all options for these questions
+    const optionsResult = await pool.query(
+      'SELECT question_id, option_text, is_correct FROM options WHERE question_id = ANY($1::int[])',
+      [questionsResult.rows.map(q => q.id)]
+    );
+    // Build a map: question_id -> { question_text, type, correct_answers, options: [...] }
+    const questionMap = {};
+    questionsResult.rows.forEach(q => {
+      questionMap[q.id] = {
+        question_text: q.question_text,
+        type: q.type,
+        correct_answers: q.correct_answers,
+        options: []
+      };
+    });
+    optionsResult.rows.forEach(opt => {
+      if (questionMap[opt.question_id]) {
+        questionMap[opt.question_id].options.push(opt);
+      }
+    });
+    // Group stats by session_date
+    const sessionsMap = {};
+    statsResult.rows.forEach(stat => {
+      const sessionKey = stat.session_date.toISOString();
+      if (!sessionsMap[sessionKey]) sessionsMap[sessionKey] = [];
+      sessionsMap[sessionKey].push(stat);
+    });
+    const sessions = Object.entries(sessionsMap).map(([session_date, stats]) => ({ session_date, stats }));
+    res.json({ sessions, questions: questionMap });
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching analytics' });
+  }
+};
