@@ -19,27 +19,33 @@ async function fetchStats() {
     session.stats.forEach(stat => {
       const stats = typeof stat.stats_json === 'string' ? JSON.parse(stat.stats_json) : stat.stats_json;
       const q = questionMap[stat.question_id] || {};
-      sessionHtml += `<div class="stat-block">
-        <h3>Question: ${q.question_text || '(text not found)'}</h3>`;
+      sessionHtml += `<div class="stat-block" style="background:#fff;border-radius:18px;color:#18122B;padding:30px 36px;box-shadow:0 0 18px #3332;border:2px solid #333;min-width:320px;max-width:90vw;margin-bottom:2em;">`;
+      sessionHtml += `<h3>Question: ${q.question_text || '(text not found)'}</h3>`;
       if (q.type === 'mcq' || q.type === 'mcq_single' || q.type === 'mcq_multiple') {
         sessionHtml += '<ul>';
         (q.options || []).forEach((opt, idx) => {
-          sessionHtml += `<li${opt.is_correct ? ' style="font-weight:bold;color:green;"' : ''}>${opt.option_text}${opt.is_correct ? ' (Correct)' : ''}</li>`;
+          const count = stats.answers && stats.answers[idx] ? stats.answers[idx] : 0;
+          let correct = 0, incorrect = 0;
+          if (opt.is_correct) {
+            correct = count;
+            const totalResponses = stats.totalResponses ?? Object.values(stats.answers || {}).reduce((a, b) => a + b, 0);
+            incorrect = totalResponses - count;
+          } else {
+            incorrect = count;
+          }
+          sessionHtml += `<li style="color:${opt.is_correct ? '#22b573' : '#18122B'};font-weight:${opt.is_correct ? 'bold' : 'normal'};">${opt.option_text}${opt.is_correct ? ' <span style="color:#22b573;font-weight:bold;">(Correct)</span>' : ''}: ${count} responses`;
+          if (opt.is_correct) {
+            sessionHtml += ` <span style="font-size:0.97em;color:#18122B;">correct: ${correct}, incorrect: ${incorrect}</span>`;
+          }
+          sessionHtml += '</li>';
         });
         sessionHtml += '</ul>';
-        sessionHtml += '<div>Stats:</div><ul>';
-        Object.entries(stats.answers).forEach(([idx, count]) => {
-          const opt = (q.options || [])[idx];
-          const optText = opt ? opt.option_text : `Option ${parseInt(idx) + 1}`;
-          sessionHtml += `<li>${optText}: ${count} responses</li>`;
-        });
-        sessionHtml += `</ul><div>Correct: ${stats.correctCount ?? '-'} | Incorrect: ${stats.incorrectCount ?? '-'}</div>`;
       } else if (q.type === 'short') {
-        sessionHtml += `<div>Correct: ${stats.correctCount ?? '-'} | Incorrect: ${stats.incorrectCount ?? '-'}</div>`;
+        sessionHtml += `<div style="color:#18122B;">Correct: <span style="color:#22b573;">${stats.correctCount ?? '-'}</span> | Incorrect: ${stats.incorrectCount ?? '-'}</div>`;
         if (stats.correctAnswers && stats.correctAnswers.length > 0) {
-          sessionHtml += `<div>Correct Answers: <b>${stats.correctAnswers.join(', ')}</b></div>`;
+          sessionHtml += `<div>Correct Answers: <b style="color:#22b573;">${stats.correctAnswers.join(', ')}</b></div>`;
         } else if (q.correct_answers) {
-          sessionHtml += `<div>Correct Answers: <b>${q.correct_answers}</b></div>`;
+          sessionHtml += `<div>Correct Answers: <b style="color:#22b573;">${q.correct_answers}</b></div>`;
         }
       } else {
         sessionHtml += `<pre>${JSON.stringify(stats, null, 2)}</pre>`;

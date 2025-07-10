@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quiz Admin Panel</title>
+  <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,700,900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="global.css">
   <script src="/socket.io/socket.io.js"></script>
   <script defer src="admin.js"></script>
@@ -17,8 +19,9 @@
     <section id="pastQuizzesSection">
       <h2>Past Quizzes</h2>
       <button id="fetchQuizzesBtn">Show My Quizzes</button>
+      <button id="hideQuizzesBtn" style="display:none;">Hide My Quizzes</button>
       <div id="quizzesList"></div>
-  </section>
+    </section>
     <form id="quizForm">
       <div class="form-group">
         <label for="quizName">Quiz Name:</label>
@@ -31,5 +34,20 @@
     <div id="quizRoomId" style="display:none;"></div>
     <div id="adminMessage"></div>
   </main>
+  <script>
+    const fetchBtn = document.getElementById('fetchQuizzesBtn');
+    const hideBtn = document.getElementById('hideQuizzesBtn');
+    const quizzesList = document.getElementById('quizzesList');
+    fetchBtn.addEventListener('click', () => {
+      fetchBtn.style.display = 'none';
+      hideBtn.style.display = 'inline-block';
+      quizzesList.style.display = 'block';
+    });
+    hideBtn.addEventListener('click', () => {
+      fetchBtn.style.display = 'inline-block';
+      hideBtn.style.display = 'none';
+      quizzesList.style.display = 'none';
+    });
+  </script>
 </body>
 </html>

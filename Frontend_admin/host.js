@@ -14,6 +14,7 @@ const accessCodeDisplay = document.getElementById('accessCodeDisplay');
 const hostTimer = document.getElementById('hostTimer');
 let hostQuestionTimer = null;
 let hostTimeLeft = 0;
+let quizFinished = false;
 
 startQuizBtn.addEventListener('click', () => {
     if (!quizId) return;
@@ -89,6 +90,7 @@ function startHostTimer(seconds) {
 }
 function updateHostTimerDisplay() {
   hostTimer.textContent = `Time Left: ${hostTimeLeft}s`;
+  hostTimer.style.color = '#fff';
 }
 function stopHostTimer() {
   clearInterval(hostQuestionTimer);
@@ -176,6 +178,9 @@ socket.on('quiz-ended', (leaderboard) => {
   // Remove all references to statsSection since it no longer exists in the HTML
   hideButtons();
   finishQuizBtn.style.display = 'none';
+  // Hide the timer when quiz is finished
+  hostTimer.style.display = 'none';
+  quizFinished = true;
 });
 
 finishQuizBtn.addEventListener('click', () => {
@@ -200,6 +205,12 @@ copyUserLinkBtn.addEventListener('click', () => {
 });
 
 showStatsBtn.addEventListener('click', () => {
+  if (quizFinished) {
+    if (quizId) {
+      window.location.href = `/admin/QuizAnalytics.html?quizId=${quizId}`;
+    }
+    return;
+  }
   if (!quizId || !currentQuestion || !currentQuestion.id) return;
   socket.emit('showQuestionStats', { quizId, questionId: currentQuestion.id });
 });
@@ -209,23 +220,38 @@ socket.on('question-stats', (stats) => {
   if (window.currentQuestion) {
     console.log('DEBUG: options array', window.currentQuestion.options);
   }
-  let statsHtml = '<h4>Question Statistics</h4>';
+  let statsHtml = '<h4 style="color:#18122B;">Question Statistics</h4>';
   if ((stats.type === 'mcq' || stats.type === 'mcq_single' || stats.type === 'mcq_multiple') && window.currentQuestion && window.currentQuestion.options) {
     statsHtml += '<ul>';
-    Object.entries(stats.answers).forEach(([idx, count]) => {
-      const opt = window.currentQuestion.options[idx];
-      const optText = opt?.option_text || opt?.text || `Option ${parseInt(idx) + 1}`;
-      statsHtml += `<li>${optText}: ${count} responses</li>`;
+    window.currentQuestion.options.forEach((opt, idx) => {
+      const optText = opt?.option_text || opt?.text || `Option ${idx + 1}`;
+      const count = stats.answers && stats.answers[idx] ? stats.answers[idx] : 0;
+      let correct = 0, incorrect = 0;
+      if (opt.is_correct) {
+        correct = count;
+        // Incorrect is the number of times this correct option was NOT selected (i.e., total responses - count)
+        // But for MCQ, incorrect means how many times this correct option was missed (i.e., not selected when it should have been)
+        // We'll use stats.totalResponses if available, else sum all counts
+        const totalResponses = stats.totalResponses ?? Object.values(stats.answers || {}).reduce((a, b) => a + b, 0);
+        incorrect = totalResponses - count;
+      } else {
+        incorrect = count;
+      }
+      statsHtml += `<li style="color:#18122B;">${optText}${opt.is_correct ? ' <b>(Correct)</b>' : ''}: ${count} responses`;
+      if (opt.is_correct) {
+        statsHtml += ` <span style="font-size:0.97em;">correct: ${correct}, incorrect: ${incorrect}</span>`;
+      }
+      statsHtml += '</li>';
     });
     statsHtml += '</ul>';
   } else if (stats.type === 'mcq' || stats.type === 'mcq_single' || stats.type === 'mcq_multiple') {
     statsHtml += '<ul>';
     Object.entries(stats.answers).forEach(([idx, count]) => {
-      statsHtml += `<li>Option ${parseInt(idx) + 1}: ${count} responses</li>`;
+      statsHtml += `<li style="color:#18122B;">Option ${parseInt(idx) + 1}: ${count} responses</li>`;
     });
     statsHtml += '</ul>';
   } else if (stats.type === 'short') {
-    statsHtml += `<p>Correct: ${stats.correctCount}</p><p>Incorrect: ${stats.incorrectCount}</p>`;
+    statsHtml += `<p style="color:#18122B;">Correct: ${stats.correctCount}</p><p style="color:#18122B;">Incorrect: ${stats.incorrectCount}</p>`;
   }
   let modal = document.getElementById('statsModal');
   if (!modal) {
@@ -236,12 +262,30 @@ socket.on('question-stats', (stats) => {
     modal.style.left = '50%';
     modal.style.transform = 'translate(-50%, -50%)';
     modal.style.background = '#fff';
-    modal.style.padding = '30px';
+    modal.style.padding = '30px 36px';
     modal.style.border = '2px solid #333';
     modal.style.zIndex = 1000;
-    modal.style.boxShadow = '0 0 10px #333';
+    modal.style.boxShadow = '0 0 18px #3332';
+    modal.style.borderRadius = '18px';
+    modal.style.minWidth = '320px';
+    modal.style.maxWidth = '90vw';
+    modal.style.color = '#18122B';
+    modal.style.fontFamily = "'Satoshi', 'Inter', 'Roboto', Arial, sans-serif";
     document.body.appendChild(modal);
   }
-  modal.innerHTML = statsHtml + '<br><button onclick="document.getElementById(\'statsModal\').style.display=\'none\'">Close</button>';
+  modal.innerHTML = statsHtml + '<br><button style="margin-top:12px;padding:0.5em 1.2em;border-radius:8px;background:#6C38FF;color:#fff;border:none;font-weight:600;cursor:pointer;" onclick="document.getElementById(\'statsModal\').style.display=\'none\'">Close</button>';
   modal.style.display = 'block';
+});
+
+// Center the .container contents in host.html
+window.addEventListener('DOMContentLoaded', () => {
+  const container = document.querySelector('.container');
+  if (container) {
+    container.style.display = 'flex';
+    container.style.flexDirection = 'column';
+    container.style.justifyContent = 'center';
+    container.style.alignItems = 'center';
+    container.style.minHeight = '90vh';
+    container.style.textAlign = 'center';
+  }
 });

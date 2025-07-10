@@ -287,10 +287,10 @@ fetchQuizzesBtn.addEventListener('click', async () => {
           <span><strong>Title:</strong> ${quiz.title}</span>
           <span><strong>Access Code:</strong> ${quiz.access_code}</span>
           <div>
-            <button class="view-questions-btn" data-quiz-id="${quiz.id}">View Questions</button>
-            <button class="view-leaderboard-btn" data-quiz-code="${quiz.access_code}">View Leaderboard</button>
-            <button class="host-quiz-btn" data-quiz-id="${quiz.id}">Host Quiz</button>
-            <button class="view-analytics-btn" data-quiz-id="${quiz.id}">View Quiz Analytics</button>
+            <button class="view-questions-btn quiz-action-btn" data-quiz-id="${quiz.id}">View Questions</button>
+            <button class="view-leaderboard-btn quiz-action-btn" data-quiz-code="${quiz.access_code}">View Leaderboard</button>
+            <button class="host-quiz-btn quiz-action-btn" data-quiz-id="${quiz.id}">Host Quiz</button>
+            <button class="view-analytics-btn quiz-action-btn" data-quiz-id="${quiz.id}">View Quiz Analytics</button>
           </div>
         </div>
         <div class="questions-details" id="details-${quiz.id}" style="display:none;"></div>
@@ -420,13 +420,13 @@ socket.on('question-stats', (stats) => {
   if (stats.type === 'mcq') {
     statsHtml += '<ul>';
     Object.entries(stats.answers).forEach(([idx, count]) => {
-      statsHtml += `<li>Option ${parseInt(idx) + 1}: ${count} responses</li>`;
+      statsHtml += `<li style="color:#18122B;">Option ${parseInt(idx) + 1}: ${count} responses</li>`;
     });
     statsHtml += '</ul>';
   } else if (stats.type === 'short') {
-    statsHtml += `<p>Correct: ${stats.correctCount}</p><p>Incorrect: ${stats.incorrectCount}</p>`;
+    statsHtml += `<p style="color:#18122B;">Correct: ${stats.correctCount}</p><p style="color:#18122B;">Incorrect: ${stats.incorrectCount}</p>`;
   } else if (stats.type === 'tf' || stats.type === 'truefalse') {
-    statsHtml += `<p>True: ${stats.answers['True'] || 0}</p><p>False: ${stats.answers['False'] || 0}</p>`;
+    statsHtml += `<p style="color:#18122B;">True: ${stats.answers['True'] || 0}</p><p style="color:#18122B;">False: ${stats.answers['False'] || 0}</p>`;
   }
   showStatsModal(statsHtml);
 });
@@ -441,13 +441,18 @@ function showStatsModal(html) {
     modal.style.left = '50%';
     modal.style.transform = 'translate(-50%, -50%)';
     modal.style.background = '#fff';
-    modal.style.padding = '30px';
+    modal.style.padding = '30px 36px';
     modal.style.border = '2px solid #333';
     modal.style.zIndex = 1000;
-    modal.style.boxShadow = '0 0 10px #333';
+    modal.style.boxShadow = '0 0 18px #3332';
+    modal.style.borderRadius = '18px';
+    modal.style.minWidth = '320px';
+    modal.style.maxWidth = '90vw';
+    modal.style.color = '#18122B';
+    modal.style.fontFamily = "'Satoshi', 'Inter', 'Roboto', Arial, sans-serif";
     document.body.appendChild(modal);
   }
-  modal.innerHTML = html + '<br><button onclick="document.getElementById(\'statsModal\').style.display=\'none\'">Close</button>';
+  modal.innerHTML = html + '<br><button style="margin-top:12px;padding:0.5em 1.2em;border-radius:8px;background:#6C38FF;color:#fff;border:none;font-weight:600;cursor:pointer;" onclick="document.getElementById(\'statsModal\').style.display=\'none\'">Close</button>';
   modal.style.display = 'block';
 }
 

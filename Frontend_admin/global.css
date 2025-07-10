@@ -1,3 +1,73 @@
+/* Satoshi font import is handled in HTML. */
+:root {
+  --primary: #6C38FF;
+  --primary-dark: #4B1FA6;
+  --background: #18122B;
+  --surface: #221C3A;
+  --card: #fff;
+  --text: #18122B;
+  --text-invert: #fff;
+  --accent: #F5F3FF;
+  --border: #2D2346;
+  --shadow: 0 4px 24px rgba(108,56,255,0.08);
+  --radius: 14px;
+  --font-main: 'Satoshi', 'Inter', 'Roboto', Arial, sans-serif;
+}
+
+html, body {
+  font-family: var(--font-main);
+  background: var(--background);
+  color: var(--text-invert);
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+.admin-wrapper {
+  max-width: 700px;
+  margin: 2.5em auto;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 2.5em 2em 2em 2em;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2em;
+  background: var(--primary);
+  color: var(--text-invert);
+  border-radius: var(--radius);
+  padding: 1.2em 2em;
+  box-shadow: var(--shadow);
+}
+
+.admin-header h1 {
+  font-size: 2.1em;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -1px;
+}
+
+.admin-header button {
+  background: var(--surface);
+  color: var(--primary);
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.7em 1.5em;
+  font-weight: 700;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  box-shadow: var(--shadow);
+}
+.admin-header button:hover {
+  background: var(--primary-dark);
+  color: var(--text-invert);
+}
+
 #pastQuizzesSection {
   margin-bottom: 40px;
 }
@@ -9,39 +79,89 @@
 }
 
 #quizzesList th, #quizzesList td {
-  border: 1px solid #ddd;
-  padding: 8px;
+  border: 1px solid var(--border);
+  padding: 12px;
   text-align: left;
+  background: var(--surface);
+  color: var(--text-invert);
 }
 
 #quizzesList th {
-  background-color: #f0f4fa;
+  background-color: var(--primary);
+  color: var(--text-invert);
 }
 
 .quiz-item {
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 18px;
   overflow: hidden;
+  background: var(--card);
+  color: var(--text);
+  box-shadow: var(--shadow);
 }
 
 .quiz-item-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px;
-  background-color: #f0f4fa;
+  padding: 18px;
+  background-color: var(--accent);
   cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+
+.quiz-item-header > div {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5em;
+  align-items: center;
+}
+
+.quiz-action-btn {
+  padding: 0.4em 0.9em;
+  font-size: 0.95em;
+  border-radius: 8px;
+  min-width: 90px;
+  font-weight: 600;
+  margin: 0;
+  box-shadow: var(--shadow);
+  background: var(--primary);
+  color: var(--text-invert);
+  border: none;
+  transition: background 0.2s, color 0.2s;
+}
+.quiz-action-btn:hover {
+  background: var(--primary-dark);
+  color: var(--text-invert);
+}
+
+.quiz-item-header button {
+  background: var(--primary);
+  color: var(--text-invert);
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.7em 1.2em;
+  font-weight: 700;
+  font-size: 1em;
+  margin-left: 0.5em;
+  box-shadow: var(--shadow);
+  transition: background 0.2s, color 0.2s;
+}
+.quiz-item-header button:hover {
+  background: var(--primary-dark);
+  color: var(--text-invert);
 }
 
 .questions-details {
-  padding: 12px;
-  background-color: #fafcff;
-  border-top: 1px solid #ddd;
+  padding: 18px;
+  background-color: var(--card);
+  border-top: 1px solid var(--border);
+  color: var(--text);
 }
 
 .question-detail-block {
-  border-bottom: 1px dashed #ccc;
+  border-bottom: 1px dashed var(--border);
   padding-bottom: 10px;
   margin-bottom: 10px;
 }
@@ -59,4 +179,67 @@
 .correct-answer {
   font-weight: bold;
   color: #28a745;
+}
+
+input, select, textarea {
+  font-family: var(--font-main);
+  background: var(--surface);
+  color: var(--text-invert);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.7em 1em;
+  margin-bottom: 1em;
+  font-size: 1em;
+  outline: none;
+  transition: border 0.2s, background 0.2s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--primary);
+  background: var(--accent);
+  color: var(--text);
+}
+
+button, .btn {
+  background: var(--primary);
+  color: var(--text-invert);
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.7em 1.5em;
+  font-weight: 700;
+  font-size: 1em;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: background 0.2s, color 0.2s;
+}
+button:hover, .btn:hover {
+  background: var(--primary-dark);
+  color: var(--text-invert);
+}
+
+.form-group {
+  margin-bottom: 1.5em;
+}
+
+.auth-wrapper {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 2.5em 2em 2em 2em;
+  max-width: 400px;
+  margin: 3em auto;
+}
+
+.auth-message {
+  margin-top: 1em;
+  color: #ff4d4f;
+  font-weight: 600;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  background: var(--surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 8px;
 }

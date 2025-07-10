@@ -3,27 +3,102 @@
 <head>
   <meta charset="UTF-8" />
   <title>Join Quiz</title>
+  <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,700,900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #6C38FF;
+      --primary-dark: #4B1FA6;
+      --background: #18122B;
+      --surface: #221C3A;
+      --card: #fff;
+      --text: #18122B;
+      --text-invert: #fff;
+      --accent: #F5F3FF;
+      --border: #2D2346;
+      --shadow: 0 4px 24px rgba(108,56,255,0.08);
+      --radius: 14px;
+      --font-main: 'Satoshi', 'Inter', 'Roboto', Arial, sans-serif;
+    }
+    html, body {
+      font-family: var(--font-main);
+      background: var(--background);
+      color: var(--text-invert);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+    .join-wrapper {
+      max-width: 400px;
+      margin: 3em auto;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 2.5em 2em 2em 2em;
+    }
+    h2 {
+      color: var(--primary);
+      text-align: center;
+      font-weight: 800;
+      margin-bottom: 1.5em;
+    }
+    label {
+      font-weight: 600;
+      color: var(--text-invert);
+    }
+    input[type="text"], input[type="hidden"] {
+      width: 100%;
+      padding: 0.7em;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      font-size: 1em;
+      background: var(--accent);
+      color: var(--text);
+      font-family: var(--font-main);
+      margin-bottom: 1em;
+    }
+    button {
+      background: var(--primary);
+      color: var(--text-invert);
+      border: none;
+      border-radius: var(--radius);
+      padding: 0.7em 1.5em;
+      font-weight: 700;
+      font-size: 1em;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      transition: background 0.2s, color 0.2s;
+      width: 100%;
+      margin-top: 1em;
+    }
+    button:hover {
+      background: var(--primary-dark);
+      color: var(--text-invert);
+    }
+  </style>
 </head>
 <body>
-  <h2>Join the Quiz</h2>
-  <form id="joinForm">
-    <label for="name">Your Name:</label>
-    <input type="text" id="name" required />
-    <br /><br />
+  <div class="join-wrapper">
+    <h2>Join the Quiz</h2>
+    <form id="joinForm">
+      <label for="name">Your Name:</label>
+      <input type="text" id="name" required />
+      <br /><br />
 
-    <!-- ✅ Hidden Quiz ID input -->
-    <input type="hidden" id="quizId" required />
+      <!-- ✅ Hidden Quiz ID input -->
+      <input type="hidden" id="quizId" required />
 
-    <label for="quizPasscode">Quiz Passcode:</label>
-    <input type="text" id="quizPasscode" required />
-    <br /><br />
+      <label for="quizPasscode">Quiz Passcode:</label>
+      <input type="text" id="quizPasscode" required />
+      <br /><br />
 
-    <button type="submit">Join</button>
-    <script>
-      localStorage.setItem('userName', userName);
-    </script>
+      <button type="submit">Join</button>
+      <script>
+        localStorage.setItem('userName', userName);
+      </script>
 
-  </form>
+    </form>
+  </div>
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);

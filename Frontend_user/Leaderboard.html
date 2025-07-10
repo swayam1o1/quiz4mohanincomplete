@@ -4,16 +4,78 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Leaderboard</title>
+    <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+    <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,700,900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; padding: 2em; }
-        .container { max-width: 700px; margin: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 2em; }
-        th, td { padding: 0.75em 1em; border-bottom: 1px solid #ddd; text-align: center; }
-        th { background: #f0f0f0; }
-        tr:nth-child(even) { background: #fafafa; }
+        :root {
+            --primary: #6C38FF;
+            --primary-dark: #4B1FA6;
+            --background: #18122B;
+            --surface: #221C3A;
+            --card: #fff;
+            --text: #18122B;
+            --text-invert: #fff;
+            --accent: #F5F3FF;
+            --border: #2D2346;
+            --shadow: 0 4px 24px rgba(108,56,255,0.08);
+            --radius: 14px;
+            --font-main: 'Satoshi', 'Inter', 'Roboto', Arial, sans-serif;
+        }
+        html, body {
+            font-family: var(--font-main);
+            background: var(--background);
+            color: var(--text-invert);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 700px;
+            margin: auto;
+            background: var(--surface);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 2.5em 2em 2em 2em;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 2em;
+            background: var(--accent);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+        th, td {
+            padding: 0.85em 1em;
+            border-bottom: 1px solid var(--border);
+            text-align: center;
+            color: var(--text);
+        }
+        th {
+            background: var(--primary);
+            color: var(--text-invert);
+            font-weight: 700;
+        }
+        tr:nth-child(even) { background: var(--accent); }
         .rank { font-weight: bold; }
-        .points { color: #2a7ae2; font-weight: bold; }
+        .points { color: var(--primary); font-weight: bold; }
         .submitted { color: #888; font-size: 0.97em; }
+        .user-row { background: #e6f7ff !important; }
+        #user-score-rank {
+            background: var(--primary);
+            border-radius: var(--radius);
+            padding: 1em;
+            margin-bottom: 1.5em;
+            font-size: 1.2em;
+            color: var(--text-invert);
+            text-align: center;
+            font-weight: 500;
+            box-shadow: var(--shadow);
+        }
+        @media (max-width: 600px) {
+            .container { padding: 1em 0.5em; }
+            th, td { padding: 0.5em 0.3em; font-size: 0.97em; }
+        }
     </style>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 </head>
@@ -46,12 +108,14 @@
         })
         .then(data => {
           tbody.innerHTML = "";
+          // Filter out 'Host' and build a filtered leaderboard
+          const filteredLeaderboard = (data.leaderboard || data).filter(p => p.name && p.name.toLowerCase() !== 'host');
           // Show user's score and rank above the leaderboard
-          const userName = localStorage.getItem('userName');
+          const userName = (localStorage.getItem('userName') || '').trim();
           let userScore = null;
           let userRank = null;
-          (data.leaderboard || data).forEach((p, i) => {
-            if (p.name === userName) {
+          filteredLeaderboard.forEach((p, i) => {
+            if (p.name && p.name.trim() === userName) {
               userScore = p.score;
               userRank = i + 1;
             }
@@ -62,7 +126,8 @@
           } else {
             userScoreRankDiv.innerHTML = '';
           }
-          (data.leaderboard || data).forEach((p, i) => {
+          let rank = 1;
+          filteredLeaderboard.forEach((p) => {
             const submittedDate = new Date(p.submitted_at);
             const formattedDate = submittedDate.toLocaleString('en-IN', {
               day: '2-digit',
@@ -72,16 +137,18 @@
               minute: '2-digit',
               hour12: true
             });
+            const highlight = (p.name && p.name.trim() === userName) ? 'user-row' : '';
             tbody.innerHTML += `
-              <tr>
-                  <td class='rank'>${i + 1}</td>
+              <tr class='${highlight}'>
+                  <td class='rank'>${rank}</td>
                   <td>${p.name}</td>
                   <td class='points'>${p.score}</td>
                   <td class='submitted'>${formattedDate}</td>
               </tr>
             `;
+            rank++;
           });
-          if ((data.leaderboard || data).length === 0) {
+          if (filteredLeaderboard.length === 0) {
             tbody.innerHTML = "<tr><td colspan='4'>No participants yet.</td></tr>";
           }
         })

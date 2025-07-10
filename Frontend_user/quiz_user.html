@@ -1,26 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Live Quiz</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz</title>
+  <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,700,900&display=swap" rel="stylesheet">
   <style>
-    body {
-      background-color: #f8f9fa;
+    :root {
+      --primary: #6C38FF;
+      --primary-dark: #4B1FA6;
+      --background: #18122B;
+      --surface: #221C3A;
+      --card: #fff;
+      --text: #18122B;
+      --text-invert: #fff;
+      --accent: #F5F3FF;
+      --border: #2D2346;
+      --shadow: 0 4px 24px rgba(108,56,255,0.08);
+      --radius: 14px;
+      --font-main: 'Satoshi', 'Inter', 'Roboto', Arial, sans-serif;
+    }
+    html, body {
+      font-family: var(--font-main);
+      background: var(--background);
+      color: var(--text-invert);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
     }
     .container {
-      max-width: 800px;
-      margin-top: 40px;
+      max-width: 600px;
+      margin: 2em auto;
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 2.5em 2em 2em 2em;
     }
+    #quizSection { margin-top: 1.5em; }
+    #quiz { margin-bottom: 1.5em; }
+    .form-group { margin-bottom: 1.2em; }
+    input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 0.7em;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      font-size: 1em;
+      background: var(--accent);
+      color: var(--text);
+      font-family: var(--font-main);
+    }
+    .form-check { margin-bottom: 0.7em; }
+    .form-check-input { margin-right: 0.5em; }
+    .btn {
+      padding: 0.7em 1.5em;
+      border-radius: var(--radius);
+      border: none;
+      background: var(--primary);
+      color: var(--text-invert);
+      font-weight: 700;
+      font-size: 1em;
+      cursor: pointer;
+      transition: background 0.2s;
+      box-shadow: var(--shadow);
+    }
+    .btn:disabled { background: #b3c7e6; cursor: not-allowed; }
+    .btn-success { background: #28a745; }
+    .btn-primary { background: var(--primary); }
+    .mt-3 { margin-top: 1.5em; }
     #progressBar {
-      transition: width 0.4s ease;
+      background: var(--primary);
+      color: var(--text-invert);
+      border-radius: var(--radius);
+      padding: 0.5em 0;
+      margin-bottom: 1em;
+      font-weight: 500;
+      text-align: center;
+      box-shadow: var(--shadow);
     }
-    .form-check-label {
-      font-size: 1.1rem;
-    }
-    #timer {
-      font-weight: bold;
+    #timer { font-size: 1.1em; margin-bottom: 1em; }
+    #feedback { margin-top: 1em; font-size: 1.1em; color: var(--primary); }
+    #autoSubmitMessage { color: #e67e22; font-size: 1em; margin-top: 0.5em; display: none; }
+    @media (max-width: 600px) {
+      .container { padding: 1em 0.5em; }
+      #quiz { font-size: 0.97em; }
     }
   </style>
 </head>

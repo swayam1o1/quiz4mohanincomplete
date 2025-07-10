@@ -85,7 +85,7 @@ function showError(msg) {
 function updateTimerDisplay() {
   const timer = document.getElementById("timer");
   timer.innerText = `Time Left: ${questionTime}s`;
-  timer.style.color = questionTime <= 10 ? "red" : "blue";
+  timer.style.color = '#fff';
 }
 
 function displayQuestion(q) {
@@ -206,23 +206,23 @@ socket.on('question-stats', (stats) => {
   if (window.currentQuestion) {
     console.log('DEBUG: options array', window.currentQuestion.options);
   }
-  let statsHtml = '<h4>Question Statistics</h4>';
+  let statsHtml = '<h4 style="color:#18122B;">Question Statistics</h4>';
   if ((stats.type === 'mcq' || stats.type === 'mcq_single' || stats.type === 'mcq_multiple') && window.currentQuestion && window.currentQuestion.options) {
     statsHtml += '<ul>';
     Object.entries(stats.answers).forEach(([idx, count]) => {
       const opt = window.currentQuestion.options[idx];
       const optText = opt?.option_text || opt?.text || `Option ${parseInt(idx) + 1}`;
-      statsHtml += `<li>${optText}: ${count} responses</li>`;
+      statsHtml += `<li style="color:#18122B;">${optText}: ${count} responses</li>`;
     });
     statsHtml += '</ul>';
   } else if (stats.type === 'mcq' || stats.type === 'mcq_single' || stats.type === 'mcq_multiple') {
     statsHtml += '<ul>';
     Object.entries(stats.answers).forEach(([idx, count]) => {
-      statsHtml += `<li>Option ${parseInt(idx) + 1}: ${count} responses</li>`;
+      statsHtml += `<li style="color:#18122B;">Option ${parseInt(idx) + 1}: ${count} responses</li>`;
     });
     statsHtml += '</ul>';
   } else if (stats.type === 'short') {
-    statsHtml += `<p>Correct: ${stats.correctCount}</p><p>Incorrect: ${stats.incorrectCount}</p>`;
+    statsHtml += `<p style="color:#18122B;">Correct: ${stats.correctCount}</p><p style="color:#18122B;">Incorrect: ${stats.incorrectCount}</p>`;
   }
   let modal = document.getElementById('statsModal');
   if (!modal) {
@@ -233,13 +233,18 @@ socket.on('question-stats', (stats) => {
     modal.style.left = '50%';
     modal.style.transform = 'translate(-50%, -50%)';
     modal.style.background = '#fff';
-    modal.style.padding = '30px';
+    modal.style.padding = '30px 36px';
     modal.style.border = '2px solid #333';
     modal.style.zIndex = 1000;
-    modal.style.boxShadow = '0 0 10px #333';
+    modal.style.boxShadow = '0 0 18px #3332';
+    modal.style.borderRadius = '18px';
+    modal.style.minWidth = '320px';
+    modal.style.maxWidth = '90vw';
+    modal.style.color = '#18122B';
+    modal.style.fontFamily = "'Satoshi', 'Inter', 'Roboto', Arial, sans-serif";
     document.body.appendChild(modal);
   }
-  modal.innerHTML = statsHtml + '<br><button onclick="document.getElementById(\'statsModal\').style.display=\'none\'">Close</button>';
+  modal.innerHTML = statsHtml + '<br><button style="margin-top:12px;padding:0.5em 1.2em;border-radius:8px;background:#6C38FF;color:#fff;border:none;font-weight:600;cursor:pointer;" onclick="document.getElementById(\'statsModal\').style.display=\'none\'">Close</button>';
   modal.style.display = 'block';
 });
 
@@ -282,7 +287,6 @@ async function submitQuiz() {
   // Show score on the page with a Show Leaderboard button
   document.getElementById("quiz").innerHTML = `
     <h4>Quiz Completed ✅</h4>
-    <p>You scored <strong>${backendScore} out of ${quizData.length}</strong>.</p>
     <p>You will be redirected to the leaderboard in a moment...</p>
     <button id="showLeaderboardBtn" class="btn btn-primary mt-3">Show Leaderboard</button>
   `;
