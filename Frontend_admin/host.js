@@ -11,9 +11,9 @@ const copyUserLinkBtn = document.getElementById('copyUserLinkBtn');
 const finishQuizBtn = document.getElementById('finishQuizBtn');
 const showStatsBtn = document.getElementById('showStatsBtn');
 const accessCodeDisplay = document.getElementById('accessCodeDisplay');
-
-let currentQuestion = null;
-let lastQuestionReached = false;
+const hostTimer = document.getElementById('hostTimer');
+let hostQuestionTimer = null;
+let hostTimeLeft = 0;
 
 startQuizBtn.addEventListener('click', () => {
     if (!quizId) return;
@@ -74,6 +74,27 @@ function renderLeaderboard(leaderboard) {
   // Remove all references to statsSection since it no longer exists in the HTML
 }
 
+function startHostTimer(seconds) {
+  clearInterval(hostQuestionTimer);
+  hostTimeLeft = seconds;
+  updateHostTimerDisplay();
+  hostQuestionTimer = setInterval(() => {
+    hostTimeLeft--;
+    updateHostTimerDisplay();
+    if (hostTimeLeft <= 0) {
+      clearInterval(hostQuestionTimer);
+      hostTimer.textContent = "Time's up!";
+    }
+  }, 1000);
+}
+function updateHostTimerDisplay() {
+  hostTimer.textContent = `Time Left: ${hostTimeLeft}s`;
+}
+function stopHostTimer() {
+  clearInterval(hostQuestionTimer);
+  hostTimer.textContent = '';
+}
+
 if (!quizId) {
   currentQuestionDiv.innerHTML = '<p>Error: No quiz selected.</p>';
   hideButtons();
@@ -121,14 +142,19 @@ if (!quizId) {
 }
 
 startQuizBtn.addEventListener('click', () => {
-  if (!quizId) return;
+  if (!quizId) {
+    adminMessage.textContent = 'Quiz ID not set!';
+    return;
+  }
   socket.emit('startQuiz', { quizId });
   showNextButton();
+  // Timer will start on show-question event
 });
 
 nextQuestionBtn.addEventListener('click', () => {
   if (!quizId) return;
   socket.emit('nextQuestion', { quizId });
+  // Timer will start on show-question event
 });
 
 socket.on('show-question', (question) => {
@@ -136,6 +162,12 @@ socket.on('show-question', (question) => {
   currentQuestion = question;
   renderQuestion(question);
   showNextButton();
+  // Start timer for this question
+  if (question && question.time_limit) {
+    startHostTimer(question.time_limit);
+  } else {
+    stopHostTimer();
+  }
 });
 
 socket.on('quiz-ended', (leaderboard) => {
