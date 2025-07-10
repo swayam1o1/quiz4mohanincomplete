@@ -33,19 +33,45 @@ exports.addQuestion = async (req, res) => {
   }
 
   try {
-    const questionRes = await pool.query(
-      'INSERT INTO questions (quiz_id, question_text, type, time_limit, points) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [quizId, question_text, type, time_limit, points || 1]
-    );
+    let questionRes;
+    let correctAnswers = '';
+    if (type === 'short') {
+      // For short answer, extract correct answer(s) from options
+      correctAnswers = options
+        .map(opt => (opt.text || opt.option_text || '').trim())
+        .filter(Boolean)
+        .join(',');
+      questionRes = await pool.query(
+        'INSERT INTO questions (quiz_id, question_text, type, time_limit, points, correct_answers) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+        [quizId, question_text, type, time_limit, points || 1, correctAnswers]
+      );
+    } else if (type === 'mcq' || type === 'mcq_single' || type === 'mcq_multiple') {
+      // For MCQ, extract correct option_text(s)
+      correctAnswers = options
+        .filter(opt => opt.is_correct)
+        .map(opt => (opt.option_text || opt.text || '').trim())
+        .filter(Boolean)
+        .join(',');
+      questionRes = await pool.query(
+        'INSERT INTO questions (quiz_id, question_text, type, time_limit, points, correct_answers) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+        [quizId, question_text, type, time_limit, points || 1, correctAnswers]
+      );
+    } else {
+      questionRes = await pool.query(
+        'INSERT INTO questions (quiz_id, question_text, type, time_limit, points) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+        [quizId, question_text, type, time_limit, points || 1]
+      );
+    }
 
     const questionId = questionRes.rows[0].id;
 
-    
-    for (const opt of options) {
-      await pool.query(
-        'INSERT INTO options (question_id, option_text, is_correct) VALUES ($1, $2, $3)',
-        [questionId, opt.option_text, opt.is_correct || false]
-      );
+    if (type !== 'short') {
+      for (const opt of options) {
+        await pool.query(
+          'INSERT INTO options (question_id, option_text, is_correct) VALUES ($1, $2, $3)',
+          [questionId, opt.option_text, opt.is_correct || false]
+        );
+      }
     }
 
     res.status(201).json({ question: questionRes.rows[0], message: 'Question added' });
@@ -105,7 +131,14 @@ exports.getQuestionsByQuiz = async (req, res) => {
        GROUP BY q.id`,
       [quizId]
     );
-    res.json({ questions: questionsRes.rows });
+    // Map correct answer for short answer questions
+    const questions = questionsRes.rows.map(q => {
+      if (q.type === 'short') {
+        return { ...q, shortAnswers: q.short_answers || q.correct_answers };
+      }
+      return q;
+    });
+    res.json({ questions });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error fetching questions' });
@@ -142,10 +175,16 @@ exports.startQuiz = async (req, res) => {
       ORDER BY q.id`,
       [quizId]
     );
-
+    // Map correct answer for short answer questions
+    const questions = questionsResult.rows.map(q => {
+      if (q.type === 'short') {
+        return { ...q, shortAnswers: q.short_answers || q.correct_answers };
+      }
+      return q;
+    });
     res.json({
       quiz: quizResult.rows[0],
-      questions: questionsResult.rows
+      questions
     });
   } catch (err) {
     console.error(err);
@@ -183,10 +222,16 @@ exports.getQuizState = async (req, res) => {
       ORDER BY q.id`,
       [quizId]
     );
-
+    // Map correct answer for short answer questions
+    const questions = questionsResult.rows.map(q => {
+      if (q.type === 'short') {
+        return { ...q, shortAnswers: q.short_answers || q.correct_answers };
+      }
+      return q;
+    });
     res.json({
       quiz: quizResult.rows[0],
-      questions: questionsResult.rows
+      questions
     });
   } catch (err) {
     console.error(err);

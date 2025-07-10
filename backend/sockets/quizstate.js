@@ -83,11 +83,13 @@ class QuizState {
       });
     } else if (question.type === 'short') {
       let correctAnswers = [];
-      if (typeof question.shortAnswers === 'string') {
-        correctAnswers = question.shortAnswers.split(',').map(s => s.trim().toLowerCase());
-      } else if (Array.isArray(question.shortAnswers)) {
-        correctAnswers = question.shortAnswers.map(s => s.trim().toLowerCase());
+      const shortAns = question.shortAnswers || question.short_answers || question.correct_answers || '';
+      if (typeof shortAns === 'string') {
+        correctAnswers = shortAns.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+      } else if (Array.isArray(shortAns)) {
+        correctAnswers = shortAns.map(s => s.trim().toLowerCase());
       }
+      stats.correctAnswers = correctAnswers; // Always include correct answers in stats
       questionAnswers.forEach((answer) => {
         if (typeof answer === 'string' && correctAnswers.includes(answer.trim().toLowerCase())) {
           stats.correctCount++;

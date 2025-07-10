@@ -35,6 +35,11 @@ window.onload = async () => {
     return;
   }
 
+  // Always store the username in localStorage when the user enters the quiz
+  if (userName) {
+    localStorage.setItem('userName', userName);
+  }
+
   try {
     const response = await fetch(`http://127.0.0.1:5050/api/quiz/validate/${passcode}`);
     if (!response.ok) throw new Error("Quiz not found");
@@ -239,6 +244,27 @@ socket.on('question-stats', (stats) => {
 });
 
 
+// Polling function to fetch user's score until it is nonzero or timeout
+async function fetchUserScoreWithPolling(quizIdNum, userName, maxAttempts = 10, delayMs = 500) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const response = await fetch(`http://localhost:5050/api/quiz/leaderboard/${quizIdNum}`);
+      if (response.ok) {
+        const leaderboard = (await response.json()).leaderboard;
+        const userEntry = leaderboard.find(entry => entry.name === userName);
+        if (userEntry) {
+          return userEntry.score;
+        }
+      }
+    } catch (err) {
+      // ignore, will retry
+    }
+    await new Promise(res => setTimeout(res, delayMs));
+  }
+  // Fallback: return 0 if not found after polling
+  return 0;
+}
+
 async function submitQuiz() {
   
   console.log("submitQuiz() called");
@@ -249,27 +275,14 @@ async function submitQuiz() {
   progressBar.style.width = `100%`;
   progressBar.innerText = `Completed`;
 
-  // Count correct answers
-  let correctCount = 0;
-  userAnswers.forEach((ans, idx) => {
-    const question = quizData[idx];
-    if (question.type === 'short') {
-      const correctAnswer = question.options.find(opt => opt.is_correct)?.option_text;
-      if (typeof ans.answer === 'string' && correctAnswer && ans.answer.trim().toLowerCase() === correctAnswer.trim().toLowerCase()) {
-        correctCount++;
-      }
-    } else {
-      const correctOption = question.options.find(opt => opt.is_correct);
-      if (question.options[ans.answer]?.id === correctOption?.id) {
-        correctCount++;
-      }
-    }
-  });
+  // Poll for the real score from the backend leaderboard
+  const quizIdNum = Number(localStorage.getItem('quizId'));
+  const backendScore = await fetchUserScoreWithPolling(quizIdNum, userName);
 
   // Show score on the page with a Show Leaderboard button
   document.getElementById("quiz").innerHTML = `
     <h4>Quiz Completed ✅</h4>
-    <p>You scored <strong>${correctCount} out of ${quizData.length}</strong>.</p>
+    <p>You scored <strong>${backendScore} out of ${quizData.length}</strong>.</p>
     <p>You will be redirected to the leaderboard in a moment...</p>
     <button id="showLeaderboardBtn" class="btn btn-primary mt-3">Show Leaderboard</button>
   `;
@@ -282,12 +295,8 @@ async function submitQuiz() {
     window.location.href = `Leaderboard.html?quiz=${passcode}`;
   };
 
-  // Submit the score to the backend
-  await submitParticipant(passcode, userName, correctCount);
-
-  // Remove localStorage keys
+  // Remove only quizPasscode, not userName
   localStorage.removeItem("quizPasscode");
-  localStorage.removeItem("userName");
 
   // Wait 3 seconds, then redirect (unless user already clicked the button)
   setTimeout(() => {

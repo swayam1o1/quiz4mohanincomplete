@@ -20,6 +20,7 @@
 <body>
     <div class="container">
         <h1>Leaderboard</h1>
+        <div id="user-score-rank" style="margin-bottom: 1.5em; font-size: 1.2em;"></div>
         <table>
             <thead>
                 <tr>
@@ -45,6 +46,22 @@
         })
         .then(data => {
           tbody.innerHTML = "";
+          // Show user's score and rank above the leaderboard
+          const userName = localStorage.getItem('userName');
+          let userScore = null;
+          let userRank = null;
+          (data.leaderboard || data).forEach((p, i) => {
+            if (p.name === userName) {
+              userScore = p.score;
+              userRank = i + 1;
+            }
+          });
+          const userScoreRankDiv = document.getElementById('user-score-rank');
+          if (userScore !== null && userRank !== null) {
+            userScoreRankDiv.innerHTML = `You scored <b>${userScore}</b> and your rank is <b>${userRank}</b>`;
+          } else {
+            userScoreRankDiv.innerHTML = '';
+          }
           (data.leaderboard || data).forEach((p, i) => {
             const submittedDate = new Date(p.submitted_at);
             const formattedDate = submittedDate.toLocaleString('en-IN', {
@@ -104,6 +121,11 @@
           tbody.innerHTML = "<tr><td colspan='4'>Invalid quiz code.</td></tr>";
         });
     };
+    </script>
+    <script>
+    window.addEventListener('beforeunload', function() {
+      localStorage.removeItem('userName');
+    });
     </script>
 </body>
 </html>

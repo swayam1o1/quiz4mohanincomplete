@@ -1,4 +1,4 @@
-const { activeQuizzes, QuizState } = require('./quizState');
+const { activeQuizzes, QuizState } = require('./quizstate');
 const fetch = require('node-fetch');
 const pool = require('../config/db');
 
@@ -26,8 +26,12 @@ module.exports = function (io) {
           } catch (err) {
             console.error('Error fetching access code for quiz:', err);
           }
-          // Ensure all questions have an id property
-          questions = questions.map(q => ({ ...q, id: q.id || q._id }));
+          // Ensure all questions have an id property and shortAnswers field
+          questions = questions.map(q => ({
+            ...q,
+            id: q.id || q._id,
+            shortAnswers: q.shortAnswers || q.short_answers
+          }));
           quiz = new QuizState(quizId, questions, accessCode);
           activeQuizzes.set(quizId, quiz);
           console.log(`[Server] Created quiz ${quizId} with ${questions.length} questions`);
@@ -77,9 +81,42 @@ console.log(quiz.getLeaderboard());
       quizId = Number(quizId); // Ensure quizId is a number
       const quiz = activeQuizzes.get(quizId);
       if (quiz) {
-        console.log('submitAnswer:', { quizId, questionId, answer, questionIdType: typeof questionId });
         quiz.submitAnswer(socket.id, questionId, answer);
-        console.log('answers map keys after submit:', Array.from(quiz.answers.keys()), Array.from(quiz.answers.keys()).map(k => typeof k));
+
+        // Find the question
+        const question = quiz.questions.find(q => (q.id || q._id) == questionId);
+        if (question) {
+          let isCorrect = false;
+          if (question.type === 'mcq' || question.type === 'mcq_single' || question.type === 'mcq_multiple') {
+            // For MCQ, check if the answer index matches a correct option
+            const correctOptions = question.options
+              .map((opt, idx) => opt.is_correct ? idx : null)
+              .filter(idx => idx !== null);
+            if (Array.isArray(answer)) {
+              // For multiple select
+              isCorrect = answer.every(a => correctOptions.includes(a)) && answer.length === correctOptions.length;
+            } else {
+              isCorrect = correctOptions.includes(answer);
+            }
+          } else if (question.type === 'short') {
+            // For short answer, compare normalized answer to correct answers
+            const shortAns = question.shortAnswers || question.short_answers || question.correct_answers || '';
+            let correctAnswers = [];
+            if (typeof shortAns === 'string') {
+              correctAnswers = shortAns.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+            } else if (Array.isArray(shortAns)) {
+              correctAnswers = shortAns.map(s => s.trim().toLowerCase());
+            }
+            if (typeof answer === 'string' && correctAnswers.includes(answer.trim().toLowerCase())) {
+              isCorrect = true;
+            }
+          }
+          if (isCorrect) {
+            console.log(`[Score Update] socketId: ${socket.id}, questionId: ${questionId}, points: ${question.points || 1}`);
+            quiz.updateScore(socket.id, question.points || 1);
+          }
+        }
+        console.log('[Leaderboard after answer]', quiz.getLeaderboard());
       }
     });
 
@@ -104,7 +141,7 @@ console.log(quiz.getLeaderboard());
       if (quiz) {
         const leaderboard = quiz.getLeaderboard();
         // For each participant, submit their score using accessCode
-        /*for (const participant of leaderboard) {
+        for (const participant of leaderboard) {
           try {
             await fetch('http://localhost:5050/api/quiz/submit', {
               method: 'POST',
@@ -114,14 +151,14 @@ console.log(quiz.getLeaderboard());
           } catch (err) {
             console.error('Error submitting participant score:', err);
           }
-        }*/
+        }
         io.to(quizId).emit('quiz-ended', leaderboard);
         activeQuizzes.delete(quizId); // Optionally clear quiz from memory
       }
     });
 
     // Show stats for the current question when requested
-    socket.on('showQuestionStats', ({ quizId, questionId }) => {
+    socket.on('showQuestionStats', async ({ quizId, questionId }) => {
       quizId = Number(quizId);
       const quiz = activeQuizzes.get(quizId);
       if (quiz) {
@@ -129,6 +166,16 @@ console.log(quiz.getLeaderboard());
         const stats = quiz.getQuestionStats(questionId);
         if (stats) {
           io.to(quizId).emit('question-stats', stats);
+          // Persist stats in DB
+          try {
+            await pool.query(
+              'INSERT INTO question_stats (quiz_id, question_id, session_date, stats_json, correct_answer) VALUES ($1, $2, NOW(), $3, $4)',
+              [quizId, questionId, JSON.stringify(stats), stats.correctAnswers ? JSON.stringify(stats.correctAnswers) : null]
+            );
+            console.log('Stats persisted for quiz', quizId, 'question', questionId);
+          } catch (err) {
+            console.error('Error persisting question stats:', err);
+          }
         }
       }
     });
