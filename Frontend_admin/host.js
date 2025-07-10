@@ -62,6 +62,17 @@ function renderQuestion(q) {
   currentQuestionDiv.innerHTML = html;
 }
 
+function renderLeaderboard(leaderboard) {
+  let html = '<h3>Quiz Ended! Leaderboard</h3><ol>';
+  leaderboard.forEach(entry => {
+    html += `<li>${entry.name}: ${entry.score}</li>`;
+  });
+  html += '</ol>';
+  currentQuestionDiv.innerHTML = html;
+  statsSection.innerHTML = '';
+  hideButtons();
+}
+
 function renderStats(stats) {
   let statsHtml = '<h4>Question Statistics</h4>';
   if (stats.type === 'mcq') {
@@ -72,21 +83,28 @@ function renderStats(stats) {
     statsHtml += '</ul>';
   } else if (stats.type === 'short') {
     statsHtml += `<p>Correct: ${stats.correctCount}</p><p>Incorrect: ${stats.incorrectCount}</p>`;
-  } else if (stats.type === 'tf' || stats.type === 'truefalse') {
-    statsHtml += `<p>True: ${stats.answers['True'] || 0}</p><p>False: ${stats.answers['False'] || 0}</p>`;
   }
-  statsSection.innerHTML = statsHtml;
+  showStatsModal(statsHtml);
 }
 
-function renderLeaderboard(leaderboard) {
-  let html = '<h3>Quiz Ended! Leaderboard</h3><ol>';
-  leaderboard.forEach(entry => {
-    html += `<li>${entry.name}: ${entry.score}</li>`;
-  });
-  html += '</ol>';
-  currentQuestionDiv.innerHTML = html;
-  statsSection.innerHTML = '';
-  hideButtons();
+function showStatsModal(html) {
+  let modal = document.getElementById('statsModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'statsModal';
+    modal.style.position = 'fixed';
+    modal.style.top = '50%';
+    modal.style.left = '50%';
+    modal.style.transform = 'translate(-50%, -50%)';
+    modal.style.background = '#fff';
+    modal.style.padding = '30px';
+    modal.style.border = '2px solid #333';
+    modal.style.zIndex = 1000;
+    modal.style.boxShadow = '0 0 10px #333';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = html + '<br><button onclick="document.getElementById(\'statsModal\').style.display=\'none\'">Close</button>';
+  modal.style.display = 'block';
 }
 
 if (!quizId) {
@@ -137,16 +155,16 @@ socket.on('show-question', (question) => {
   showNextButton();
 });
 
-socket.on('question-stats', (stats) => {
-  renderStats(stats);
-});
-
 socket.on('quiz-ended', (leaderboard) => {
   // Optionally display leaderboard or message
   currentQuestionDiv.innerHTML = '<h3>Quiz Finished!</h3>';
   statsSection.innerHTML = '<pre>' + JSON.stringify(leaderboard, null, 2) + '</pre>';
   hideButtons();
   finishQuizBtn.style.display = 'none';
+});
+
+socket.on('question-stats', (stats) => {
+  renderStats(stats);
 });
 
 finishQuizBtn.addEventListener('click', () => {

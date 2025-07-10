@@ -51,6 +51,24 @@ class QuizState {
     }
     this.answers.get(questionId).set(socketId, answer);
   }
+  
+
+  getLeaderboard() {
+    const leaderboard = Array.from(this.participants.entries()).map(([socketId, data]) => ({
+      socketId,
+      name: data.name,
+      score: data.score
+    }));
+
+    return leaderboard.sort((a, b) => b.score - a.score);
+  }
+
+  updateScore(socketId, points) {
+    const participant = this.participants.get(socketId);
+    if (participant) {
+      participant.score += points;
+    }
+  }
 
   getQuestionStats(questionId) {
     const questionAnswers = this.answers.get(questionId);
@@ -94,36 +112,8 @@ class QuizState {
           stats.incorrectCount++;
         }
       });
-    } else if (question.type === 'tf' || question.type === 'truefalse') {
-      // True/False: count for True and False
-      stats.answers['True'] = 0;
-      stats.answers['False'] = 0;
-      questionAnswers.forEach((answer) => {
-        if (answer === true || answer === 'True' || answer === 'true') {
-          stats.answers['True']++;
-        } else if (answer === false || answer === 'False' || answer === 'false') {
-          stats.answers['False']++;
-        }
-      });
     }
     return stats;
-  }
-
-  getLeaderboard() {
-    const leaderboard = Array.from(this.participants.entries()).map(([socketId, data]) => ({
-      socketId,
-      name: data.name,
-      score: data.score
-    }));
-
-    return leaderboard.sort((a, b) => b.score - a.score);
-  }
-
-  updateScore(socketId, points) {
-    const participant = this.participants.get(socketId);
-    if (participant) {
-      participant.score += points;
-    }
   }
 }
 

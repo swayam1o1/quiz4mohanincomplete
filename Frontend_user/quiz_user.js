@@ -65,10 +65,6 @@ window.onload = async () => {
     socket.on("quiz-ended", () => {
       submitQuiz();
     });
-    // Listen for per-question stats
-    socket.on("question-stats", (stats) => {
-      showStatsModal(stats);
-    });
   } catch (error) {
     console.error("Failed to load quiz:", error);
     showError("Invalid or expired passcode. Please try again.");
@@ -88,6 +84,8 @@ function updateTimerDisplay() {
 }
 
 function displayQuestion(q) {
+  console.log("🎯 Rendering question", q.id, q.question_text);
+
   clearInterval(questionTimer);
   questionTime = q.time_limit || 60;
 
@@ -134,6 +132,7 @@ function displayQuestion(q) {
 
 
 function checkAnswer(questionId, questionType, autoSubmit = false) {
+  console.log("🧪 checkAnswer called", questionId, questionType, autoSubmit);
   clearInterval(questionTimer);
   let answerValue = null;
   let submittedText = '';
@@ -179,6 +178,11 @@ function checkAnswer(questionId, questionType, autoSubmit = false) {
     submitBtn.disabled = true;
     submitBtn.innerText = "Submitted";
   }
+  console.log("📤 Emitting submitAnswer:", {
+    quizId: passcode,
+    questionId,
+    answer: answerValue
+  });
   // Send answer to server
   socket.emit('submitAnswer', { quizId: passcode, questionId, answer: answerValue });
   // Wait for stats from server before moving to next question
@@ -193,7 +197,9 @@ function showAutoSubmitMessage() {
   }, 3000);
 }
 
+
 async function submitQuiz() {
+  
   console.log("submitQuiz() called");
   if (quizAlreadySubmitted) return;
   quizAlreadySubmitted = true;

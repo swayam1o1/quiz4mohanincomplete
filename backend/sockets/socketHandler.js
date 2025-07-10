@@ -76,7 +76,6 @@ console.log(quiz.getLeaderboard());
       const quiz = activeQuizzes.get(quizId);
       if (quiz) {
         quiz.submitAnswer(socket.id, questionId, answer);
-        // Optionally, you can check if all participants have answered and auto-broadcast stats
       }
     });
 
@@ -107,7 +106,7 @@ console.log(quiz.getLeaderboard());
       if (quiz) {
         const leaderboard = quiz.getLeaderboard();
         // For each participant, submit their score using accessCode
-        for (const participant of leaderboard) {
+        /*for (const participant of leaderboard) {
           try {
             await fetch('http://localhost:5050/api/quiz/submit', {
               method: 'POST',
@@ -117,7 +116,7 @@ console.log(quiz.getLeaderboard());
           } catch (err) {
             console.error('Error submitting participant score:', err);
           }
-        }
+        }*/
         io.to(quizId).emit('quiz-ended', leaderboard);
         activeQuizzes.delete(quizId); // Optionally clear quiz from memory
       }
