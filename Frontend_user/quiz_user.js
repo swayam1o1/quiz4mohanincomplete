@@ -88,6 +88,10 @@ function updateTimerDisplay() {
   timer.style.color = '#fff';
 }
 
+function shuffleArray(arr) {
+  return arr.map(a => [Math.random(), a]).sort((a, b) => a[0] - b[0]).map(a => a[1]);
+}
+
 function displayQuestion(q) {
   console.log("🎯 Rendering question", q.id, q.question_text);
 
@@ -109,6 +113,9 @@ function displayQuestion(q) {
       <label for="typedAnswer">Your Answer:</label>
       <input type="text" class="form-control" id="typedAnswer" placeholder="Type your answer here">
     </div>`;
+  } else if (q.type === 'match') {
+    renderCustomMatchUI(q);
+    return;
   } else {
     optionsHtml = q.options.map((opt, idx) => `
       <div class="form-check">
@@ -121,20 +128,227 @@ function displayQuestion(q) {
   document.getElementById("quiz").innerHTML = `
     <h5>Question ${q.questionNumber} of ${q.totalQuestions}: ${q.question_text}</h5>
     ${optionsHtml}
-    <button class="btn btn-success mt-3" onclick="checkAnswer(${q.id}, '${q.type}')">Submit Answer</button>
+    <button class="btn btn-success mt-3" id="submitMatchBtn" style="${q.type === 'match' ? '' : 'display:none;'}">Submit Answer</button>
+    <button class="btn btn-success mt-3" onclick="checkAnswer(${q.id}, '${q.type}')" style="${q.type !== 'match' ? '' : 'display:none;'}">Submit Answer</button>
   `;
+
+  if (q.type === 'match') {
+    setupCustomMatchDragDrop(q);
+    document.getElementById('submitMatchBtn').onclick = function() {
+      submitMatchAnswer(q);
+    };
+  }
 
   questionTimer = setInterval(() => {
     questionTime--;
     updateTimerDisplay();
     if (questionTime === 0) {
       clearInterval(questionTimer);
-      checkAnswer(q.id, q.type, true);
+      if (q.type === 'match') {
+        submitMatchAnswer(q, true);
+      } else {
+        checkAnswer(q.id, q.type, true);
+      }
     }
   }, 1000);
 }
 
+function renderCustomMatchUI(q) {
+  const leftItems = shuffleArray(q.pairs.map(p => p.left_item));
+  const rightItems = shuffleArray(q.pairs.map(p => p.right_item));
+  const quizDiv = document.getElementById("quiz");
 
+  // Render left and right columns
+  quizDiv.innerHTML = `
+    <div style="display:flex;gap:32px;justify-content:center;align-items:flex-start;">
+      <div style="flex:1;">
+        <strong>Left</strong>
+        <ul id="match-left" style="list-style:none;padding:0;">
+          ${leftItems.map(item => `
+            <li class="match-left-item" data-left="${item}" style="margin-bottom:18px;padding:12px 16px;background:#fff;color:#18122B;border-radius:8px;min-height:48px;display:flex;align-items:center;justify-content:space-between;position:relative;">
+              <span>${item}</span>
+              <span class="drop-zone" data-left="${item}" style="flex:1;margin-left:12px;min-height:32px;"></span>
+              <button class="clear-match-btn" style="display:none;margin-left:8px;background:none;border:none;color:#e74c3c;font-size:1.2em;cursor:pointer;">&times;</button>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+      <div style="flex:1;">
+        <strong>Right</strong>
+        <ul id="match-right" style="list-style:none;padding:0;">
+          ${rightItems.map(item => `
+            <li class="match-right-item" data-right="${item}" style="margin-bottom:18px;padding:12px 16px;background:#6C38FF;color:#fff;border-radius:8px;cursor:grab;user-select:none;position:relative;">${item}</li>
+          `).join('')}
+        </ul>
+      </div>
+    </div>
+    <button class="btn btn-success mt-3" id="submitMatchBtn">Submit Answer</button>
+  `;
+
+  setupCustomMatchDragDrop(leftItems, rightItems, q);
+}
+
+function setupCustomMatchDragDrop(leftItems, rightItems, q) {
+  const matches = {}; // { left: right }
+  const usedRight = {}; // { right: left }
+
+  let dragging = null;
+  let ghost = null;
+  let originalCursor = null;
+
+  // Helper: update UI for matches
+  function updateUI() {
+    // Clear all drop zones and clear buttons
+    document.querySelectorAll('.drop-zone').forEach(zone => {
+      zone.textContent = '';
+      zone.classList.remove('locked');
+      zone.parentElement.querySelector('.clear-match-btn').style.display = 'none';
+    });
+    // Show matches
+    Object.entries(matches).forEach(([left, right]) => {
+      const zone = document.querySelector(`.drop-zone[data-left="${left}"]`);
+      if (zone) {
+        zone.textContent = right;
+        zone.classList.add('locked');
+        zone.parentElement.querySelector('.clear-match-btn').style.display = '';
+      }
+    });
+    // Show/hide right items
+    document.querySelectorAll('.match-right-item').forEach(item => {
+      const right = item.getAttribute('data-right');
+      item.style.opacity = usedRight[right] ? 0.3 : 1;
+      item.style.pointerEvents = usedRight[right] ? 'none' : 'auto';
+    });
+  }
+
+  // Drag logic
+  document.querySelectorAll('.match-right-item').forEach(item => {
+    item.addEventListener('mousedown', e => {
+      e.preventDefault(); // Prevent text selection on drag start
+      if (usedRight[item.getAttribute('data-right')]) return;
+      dragging = item.getAttribute('data-right');
+      // Save and set cursor
+      originalCursor = item.style.cursor;
+      item.style.cursor = 'grabbing';
+      // Prevent text selection
+      document.body.style.userSelect = 'none';
+      // Create ghost
+      ghost = document.createElement('div');
+      ghost.className = 'drag-ghost';
+      ghost.textContent = dragging;
+      Object.assign(ghost.style, {
+        position: 'fixed',
+        top: e.clientY + 'px',
+        left: e.clientX + 'px',
+        cursor: 'grabbing',
+        userSelect: 'none',
+      });
+      document.body.appendChild(ghost);
+
+      function moveGhost(ev) {
+        ev.preventDefault(); // Prevent text selection while dragging
+        ghost.style.left = ev.clientX + 'px';
+        ghost.style.top = ev.clientY + 'px';
+      }
+      function upGhost(ev) {
+        document.removeEventListener('mousemove', moveGhost);
+        document.removeEventListener('mouseup', upGhost);
+        // Reset cursor and user-select
+        item.style.cursor = originalCursor || 'pointer';
+        document.body.style.userSelect = '';
+        // Check if over a drop zone
+        let dropped = false;
+        document.querySelectorAll('.drop-zone').forEach(zone => {
+          const rect = zone.getBoundingClientRect();
+          if (
+            ev.clientX >= rect.left && ev.clientX <= rect.right &&
+            ev.clientY >= rect.top && ev.clientY <= rect.bottom
+          ) {
+            const left = zone.getAttribute('data-left');
+            // Remove previous match if any
+            if (matches[left]) usedRight[matches[left]] = null;
+            // Remove this right from any other left
+            Object.keys(matches).forEach(l => {
+              if (matches[l] === dragging) delete matches[l];
+            });
+            matches[left] = dragging;
+            usedRight[dragging] = left;
+            dropped = true;
+          }
+        });
+        document.body.removeChild(ghost);
+        ghost = null;
+        dragging = null;
+        updateUI();
+      }
+      document.addEventListener('mousemove', moveGhost);
+      document.addEventListener('mouseup', upGhost);
+    });
+  });
+
+  // Clear button logic
+  document.querySelectorAll('.clear-match-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const left = btn.parentElement.querySelector('.drop-zone').getAttribute('data-left');
+      if (matches[left]) {
+        usedRight[matches[left]] = null;
+        delete matches[left];
+        updateUI();
+      }
+    });
+  });
+
+  updateUI();
+
+  // Submit logic
+  document.getElementById('submitMatchBtn').onclick = function() {
+    const pairs = Object.entries(matches).map(([left, right]) => ({ left, right }));
+    if (pairs.length !== leftItems.length) {
+      document.getElementById('feedback').innerText = 'Please match all items before submitting.';
+      return;
+    }
+    // Lock UI
+    document.querySelectorAll('.match-right-item').forEach(item => item.style.pointerEvents = 'none');
+    document.querySelectorAll('.clear-match-btn').forEach(btn => btn.style.pointerEvents = 'none');
+    document.getElementById('submitMatchBtn').disabled = true;
+    document.getElementById('submitMatchBtn').innerText = 'Submitted';
+    document.getElementById('feedback').innerText = '\u2705 Submitted!';
+    // Send to backend
+    const quizIdNum = Number(localStorage.getItem('quizId'));
+    socket.emit('submitAnswer', { quizId: quizIdNum, questionId: q.id, answer: pairs });
+  };
+}
+
+function submitMatchAnswer(q, autoSubmit = false) {
+  // Collect user matches
+  const pairs = [];
+  document.querySelectorAll('.match-left-item').forEach(leftLi => {
+    const left = leftLi.getAttribute('data-left');
+    const right = leftLi.querySelector('.drop-zone').textContent.trim();
+    if (right) pairs.push({ left, right });
+  });
+  if (pairs.length !== q.pairs.length && !autoSubmit) {
+    document.getElementById("feedback").innerText = "Please match all items before submitting.";
+    return;
+  }
+  userAnswers.push({
+    questionId: q.id,
+    answer: pairs,
+    autoSubmitted: autoSubmit
+  });
+  // Disable further changes
+  document.querySelectorAll('.match-right-item').forEach(item => { item.draggable = false; item.style.cursor = 'not-allowed'; });
+  document.querySelectorAll('.drop-zone').forEach(zone => { zone.style.pointerEvents = 'none'; });
+  const submitBtn = document.getElementById('submitMatchBtn');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerText = "Submitted";
+  }
+  document.getElementById("feedback").innerText = autoSubmit ? "\u23f0 Time's up! Auto-submitted." : "\u2705 Submitted!";
+  // Send answer to server
+  const quizIdNum = Number(localStorage.getItem('quizId'));
+  socket.emit('submitAnswer', { quizId: quizIdNum, questionId: q.id, answer: pairs });
+}
 
 function checkAnswer(questionId, questionType, autoSubmit = false) {
   console.log("🧪 checkAnswer called", questionId, questionType, autoSubmit);
@@ -147,6 +361,19 @@ function checkAnswer(questionId, questionType, autoSubmit = false) {
     submittedText = `\u2705 Submitted: "${answerValue}"`;
     if (!answerValue && !autoSubmit) {
       document.getElementById("feedback").innerText = "Please type an answer before submitting.";
+      return;
+    }
+  } else if (questionType === 'match') {
+    const pairs = [];
+    document.querySelectorAll('.match-left-item').forEach(leftLi => {
+      const left = leftLi.getAttribute('data-left');
+      const right = leftLi.querySelector('.drop-zone').textContent.trim();
+      if (right) pairs.push({ left, right });
+    });
+    answerValue = pairs;
+    submittedText = `\u2705 Submitted: ${pairs.length} matches`;
+    if (pairs.length === 0 && !autoSubmit) {
+      document.getElementById("feedback").innerText = "Please make at least one match before submitting.";
       return;
     }
   } else {
@@ -175,6 +402,9 @@ function checkAnswer(questionId, questionType, autoSubmit = false) {
   }
   if (questionType === 'short') {
     document.getElementById('typedAnswer').disabled = true;
+  } else if (questionType === 'match') {
+    document.querySelectorAll('.match-right-item').forEach(item => { item.draggable = false; item.style.cursor = 'not-allowed'; });
+    document.querySelectorAll('.drop-zone').forEach(zone => { zone.style.pointerEvents = 'none'; });
   } else {
     document.querySelectorAll('input[name="option"]').forEach(input => input.disabled = true);
   }

@@ -29,9 +29,21 @@ function createOptionBlock(qIndex, oIndex, option = {}) {
   `;
 }
 
+function createMatchPairBlock(qIndex, pIndex, pair = {}) {
+  return `
+    <div class="match-pair-block" data-q-index="${qIndex}" data-p-index="${pIndex}">
+      <input type="text" placeholder="Left item" value="${pair.left || ''}" required style="width:40%;margin-right:8px;" />
+      <span style="font-weight:bold;">&#8594;</span>
+      <input type="text" placeholder="Right item" value="${pair.right || ''}" required style="width:40%;margin-left:8px;" />
+      <button type="button" class="remove-pair-btn" title="Remove Pair">&times;</button>
+    </div>
+  `;
+}
+
 function createQuestionBlock(q, qIndex) {
   const isMCQ = q.type === 'mcq';
   const isShort = q.type === 'short';
+  const isMatch = q.type === 'match';
   return `
     <div class="question-block" data-q-index="${qIndex}">
       <button type="button" class="remove-question-btn" title="Remove Question">&times;</button>
@@ -44,6 +56,7 @@ function createQuestionBlock(q, qIndex) {
         <select class="question-type">
           <option value="mcq" ${isMCQ ? 'selected' : ''}>Multiple Choice</option>
           <option value="short" ${isShort ? 'selected' : ''}>Short Answer</option>
+          <option value="match" ${isMatch ? 'selected' : ''}>Match the Following</option>
         </select>
       </div>
       <div class="form-group options-list" style="${isMCQ ? '' : 'display:none;'}">
@@ -56,6 +69,13 @@ function createQuestionBlock(q, qIndex) {
       <div class="form-group" style="${isShort ? '' : 'display:none;'}">
         <label>Correct Answer(s):</label>
         <input type="text" class="short-answer-input" placeholder="Enter correct answer(s), comma separated" value="${q.shortAnswers || ''}" />
+      </div>
+      <div class="form-group match-pairs-list" style="${isMatch ? '' : 'display:none;'}">
+        <label>Match Pairs:</label>
+        <div>
+          ${(q.pairs || []).map((pair, pIndex) => createMatchPairBlock(qIndex, pIndex, pair)).join('')}
+        </div>
+        <button type="button" class="add-pair-btn">Add Pair</button>
       </div>
       <div class="form-group">
         <label>Time Limit (seconds):</label>
@@ -100,6 +120,18 @@ function removeOption(qIndex, oIndex) {
   renderQuestions();
 }
 
+function addPair(qIndex) {
+  updateQuestionsFromDOM();
+  if (!questions[qIndex].pairs) questions[qIndex].pairs = [];
+  questions[qIndex].pairs.push({ left: '', right: '' });
+  renderQuestions();
+}
+
+function removePair(qIndex, pIndex) {
+  questions[qIndex].pairs.splice(pIndex, 1);
+  renderQuestions();
+}
+
 function updateQuestionsFromDOM() {
   document.querySelectorAll('.question-block').forEach((block, qIndex) => {
     const text = block.querySelector('.question-text').value;
@@ -107,13 +139,19 @@ function updateQuestionsFromDOM() {
     const time = parseInt(block.querySelector('.time-input').value) || 30;
     let options = [];
     let shortAnswers = '';
+    let pairs = [];
     if (type === 'mcq') {
       options = Array.from(block.querySelectorAll('.option-block')).map(optDiv => ({
         text: optDiv.querySelector('input[type="text"]').value,
         isCorrect: optDiv.querySelector('.correct-checkbox').checked
       }));
-    } else {
+    } else if (type === 'short') {
       shortAnswers = block.querySelector('.short-answer-input').value;
+    } else if (type === 'match') {
+      pairs = Array.from(block.querySelectorAll('.match-pair-block')).map(pairDiv => ({
+        left: pairDiv.querySelector('input[placeholder="Left item"]').value,
+        right: pairDiv.querySelector('input[placeholder="Right item"]').value
+      }));
     }
     questions[qIndex] = {
       ...questions[qIndex],
@@ -121,6 +159,7 @@ function updateQuestionsFromDOM() {
       type,
       options,
       shortAnswers,
+      pairs,
       time
     };
   });
@@ -136,7 +175,8 @@ questionsContainer.addEventListener('change', (e) => {
     e.target.classList.contains('time-input') ||
     e.target.classList.contains('short-answer-input') ||
     e.target.classList.contains('correct-checkbox') ||
-    e.target.classList.contains('option-block')
+    e.target.classList.contains('option-block') ||
+    e.target.classList.contains('match-pair-block')
   ) {
     updateQuestionsFromDOM();
   }
@@ -154,6 +194,12 @@ questionsContainer.addEventListener('click', (e) => {
     const optDiv = e.target.closest('.option-block');
     const oIndex = parseInt(optDiv.getAttribute('data-o-index'));
     removeOption(qIndex, oIndex);
+  } else if (e.target.classList.contains('add-pair-btn')) {
+    addPair(qIndex);
+  } else if (e.target.classList.contains('remove-pair-btn')) {
+    const pairDiv = e.target.closest('.match-pair-block');
+    const pIndex = parseInt(pairDiv.getAttribute('data-p-index'));
+    removePair(qIndex, pIndex);
   }
 });
 
@@ -197,6 +243,15 @@ quizForm.addEventListener('submit', async (e) => {
         adminMessage.textContent = 'Short answer questions must have at least one correct answer!';
         return;
       }
+    } else if (q.type === 'match') {
+      if (!q.pairs || q.pairs.length < 1) {
+        adminMessage.textContent = 'Each Match question must have at least one pair!';
+        return;
+      }
+      if (q.pairs.some(pair => !pair.left || !pair.right)) {
+        adminMessage.textContent = 'All pairs must have both left and right items!';
+        return;
+      }
     }
   }
   adminMessage.textContent = 'Creating quiz...';
@@ -221,10 +276,13 @@ quizForm.addEventListener('submit', async (e) => {
     // 2. Add questions
     for (const q of questions) {
       let options = [];
+      let pairs = [];
       if (q.type === 'mcq') {
         options = q.options.map(opt => ({ option_text: opt.text, is_correct: opt.isCorrect }));
       } else if (q.type === 'short') {
         options = q.shortAnswers.split(',').map(ans => ({ option_text: ans.trim(), is_correct: true }));
+      } else if (q.type === 'match') {
+        pairs = q.pairs.map((pair, idx) => ({ left_item: pair.left, right_item: pair.right, pair_group: idx + 1 }));
       }
       const qRes = await fetch(`http://localhost:5050/api/quiz/${quizId}/questions`, {
         method: 'POST',
@@ -237,7 +295,8 @@ quizForm.addEventListener('submit', async (e) => {
           type: q.type,
           time_limit: q.time,
           points: 1, // You can add a points field if needed
-          options
+          options,
+          pairs
         })
       });
       if (!qRes.ok) {

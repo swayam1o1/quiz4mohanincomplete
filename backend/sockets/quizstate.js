@@ -97,6 +97,21 @@ class QuizState {
           stats.incorrectCount++;
         }
       });
+    } else if (question.type === 'match') {
+      // For match, count fully correct matches
+      if (Array.isArray(question.pairs)) {
+        const correctMap = {};
+        question.pairs.forEach(pair => {
+          correctMap[pair.left_item] = pair.right_item;
+        });
+        questionAnswers.forEach((answer) => {
+          if (Array.isArray(answer) && answer.every(userPair => correctMap[userPair.left] && correctMap[userPair.left] === userPair.right) && answer.length === question.pairs.length) {
+            stats.correctCount++;
+          } else {
+            stats.incorrectCount++;
+          }
+        });
+      }
     }
     return stats;
   }

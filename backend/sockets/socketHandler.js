@@ -14,29 +14,22 @@ module.exports = function (io) {
       let quiz = activeQuizzes.get(quizId);
     
       if (!quiz) {
-        // Only host should send questions — use length check
-        if (questions && questions.length > 0) {
-          // Fetch access code from DB
-          let accessCode = null;
-          try {
-            const result = await pool.query('SELECT access_code FROM quizzes WHERE id = $1', [quizId]);
-            if (result.rows.length > 0) {
-              accessCode = result.rows[0].access_code;
-            }
-          } catch (err) {
-            console.error('Error fetching access code for quiz:', err);
-          }
-          // Ensure all questions have an id property and shortAnswers field
-          questions = questions.map(q => ({
+        // Fetch full quiz state from backend (including pairs for match questions)
+        try {
+          const stateRes = await fetch(`http://127.0.0.1:5050/api/quiz/${quizId}/state`);
+          if (!stateRes.ok) throw new Error('Failed to fetch quiz state');
+          const quizState = await stateRes.json();
+          let questions = quizState.questions.map(q => ({
             ...q,
             id: q.id || q._id,
             shortAnswers: q.shortAnswers || q.short_answers
           }));
-          quiz = new QuizState(quizId, questions, accessCode);
+          // Ensure pairs are present for match questions
+          quiz = new QuizState(quizId, questions, quizState.quiz.access_code);
           activeQuizzes.set(quizId, quiz);
-          console.log(`[Server] Created quiz ${quizId} with ${questions.length} questions`);
-        } else {
-          console.warn(`[Server] User tried to join quiz ${quizId} before it was created by host`);
+          console.log(`[Server] Created quiz ${quizId} with ${questions.length} questions (from DB)`);
+        } catch (err) {
+          console.error('Error fetching quiz state for joinQuiz:', err);
           return;
         }
       }
@@ -44,10 +37,9 @@ module.exports = function (io) {
       quiz.addParticipant(socket.id, name);
       socket.join(quizId);
       console.log(`[Server] ${socket.id} joined quiz ${quizId}. Rooms:`, Array.from(socket.rooms));
-console.log(`[Server] Current participants in quiz ${quizId}:`);
-console.log(quiz.getLeaderboard());
+      console.log(`[Server] Current participants in quiz ${quizId}:`);
+      console.log(quiz.getLeaderboard());
 
-    
       // ✅ Log which rooms the socket is part of (important!)
       console.log(`[Server] ${socket.id} joined quiz ${quizId}. Rooms:`, Array.from(socket.rooms));
     
@@ -109,6 +101,18 @@ console.log(quiz.getLeaderboard());
             }
             if (typeof answer === 'string' && correctAnswers.includes(answer.trim().toLowerCase())) {
               isCorrect = true;
+            }
+          } else if (question.type === 'match') {
+            // For match, answer is array of {left, right}, must match all pairs
+            if (Array.isArray(answer) && Array.isArray(question.pairs)) {
+              // Build a map of correct left->right
+              const correctMap = {};
+              question.pairs.forEach(pair => {
+                correctMap[pair.left_item] = pair.right_item;
+              });
+              isCorrect = answer.every(userPair =>
+                correctMap[userPair.left] && correctMap[userPair.left] === userPair.right
+              ) && answer.length === question.pairs.length;
             }
           }
           if (isCorrect) {

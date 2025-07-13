@@ -26,9 +26,9 @@ exports.createQuiz = async (req, res) => {
 
 exports.addQuestion = async (req, res) => {
   const { quizId } = req.params;
-  const { question_text, type, time_limit, points, options } = req.body;
+  const { question_text, type, time_limit, points, options, pairs } = req.body;
 
-  if (!question_text || !type || !time_limit || !Array.isArray(options)) {
+  if (!question_text || !type || !time_limit || (type !== 'match' && !Array.isArray(options))) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
@@ -56,6 +56,12 @@ exports.addQuestion = async (req, res) => {
         'INSERT INTO questions (quiz_id, question_text, type, time_limit, points, correct_answers) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
         [quizId, question_text, type, time_limit, points || 1, correctAnswers]
       );
+    } else if (type === 'match') {
+      // For match type, no options/correct_answers, but need to insert pairs
+      questionRes = await pool.query(
+        'INSERT INTO questions (quiz_id, question_text, type, time_limit, points) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+        [quizId, question_text, type, time_limit, points || 1]
+      );
     } else {
       questionRes = await pool.query(
         'INSERT INTO questions (quiz_id, question_text, type, time_limit, points) VALUES ($1, $2, $3, $4, $5) RETURNING *',
@@ -65,11 +71,18 @@ exports.addQuestion = async (req, res) => {
 
     const questionId = questionRes.rows[0].id;
 
-    if (type !== 'short') {
+    if (type === 'mcq' || type === 'mcq_single' || type === 'mcq_multiple') {
       for (const opt of options) {
         await pool.query(
           'INSERT INTO options (question_id, option_text, is_correct) VALUES ($1, $2, $3)',
           [questionId, opt.option_text, opt.is_correct || false]
+        );
+      }
+    } else if (type === 'match' && Array.isArray(pairs)) {
+      for (const pair of pairs) {
+        await pool.query(
+          'INSERT INTO match_pairs (question_id, left_item, right_item, pair_group) VALUES ($1, $2, $3, $4)',
+          [questionId, pair.left_item, pair.right_item, pair.pair_group]
         );
       }
     }
@@ -222,13 +235,24 @@ exports.getQuizState = async (req, res) => {
       ORDER BY q.id`,
       [quizId]
     );
-    // Map correct answer for short answer questions
-    const questions = questionsResult.rows.map(q => {
+    let questions = questionsResult.rows.map(q => {
       if (q.type === 'short') {
         return { ...q, shortAnswers: q.short_answers || q.correct_answers };
       }
       return q;
     });
+
+    // For match questions, fetch pairs
+    for (let i = 0; i < questions.length; i++) {
+      if (questions[i].type === 'match') {
+        const pairsRes = await pool.query(
+          'SELECT left_item, right_item, pair_group FROM match_pairs WHERE question_id = $1 ORDER BY pair_group',
+          [questions[i].id]
+        );
+        questions[i].pairs = pairsRes.rows;
+      }
+    }
+
     res.json({
       quiz: quizResult.rows[0],
       questions
